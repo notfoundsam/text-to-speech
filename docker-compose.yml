@@ -6,6 +6,7 @@ services:
       - ./data/input:/data/input:ro
       - ./data/chunks:/data/chunks
       - ./data/output:/data/output
+      - ./data/samples:/data/samples
       - ./models/torch:/root/.cache/torch/hub
       - ./models/tts:/root/.local/share/tts
     working_dir: /app
