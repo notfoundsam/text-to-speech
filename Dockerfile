@@ -12,4 +12,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENTRYPOINT ["python", "-m", "src.cli"]
+ENTRYPOINT ["python", "-m", "tts_app.cli"]

@@ -2,7 +2,7 @@ services:
   tts:
     build: .
     volumes:
-      - ./src:/app/src:ro
+      - ./tts_app:/app/tts_app:ro
       - ./data/input:/data/input:ro
       - ./data/chunks:/data/chunks
       - ./data/output:/data/output
