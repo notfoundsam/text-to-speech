@@ -20,9 +20,11 @@ MAX_CHUNK_CHARS = {
     "silero": {"ru": 1000, "en": 250},
     "xtts": {"default": 400},
     "piper": {"default": 500},
+    "kokoro": {"default": 400},
+    "chatterbox": {"default": 400},
 }
 
-ENGINES = ["silero", "xtts", "piper"]
+ENGINES = ["silero", "xtts", "piper", "kokoro", "chatterbox"]
 
 
 def print_progress(current: int, total: int):
@@ -59,7 +61,7 @@ def main():
         "--engine",
         default="silero",
         choices=ENGINES,
-        help="TTS engine: silero (fast), piper (fast, good English), xtts (slow, best quality). Default: silero",
+        help="TTS engine: silero (fast), piper (fast, good English), kokoro (fast, multi-voice English), chatterbox (voice cloning), xtts (slow, best quality). Default: silero",
     )
 
     parser.add_argument(
@@ -129,6 +131,21 @@ def main():
             for name, description in voices.items():
                 marker = " (default)" if name == default else ""
                 print(f"  {name} - {description}{marker}")
+
+        print("\n=== Kokoro voices ===")
+        from .kokoro_tts import list_voices as kokoro_list_voices, DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+        all_kokoro = kokoro_list_voices()
+        for lang, voices in all_kokoro.items():
+            default = KOKORO_DEFAULT_VOICES[lang]
+            print(f"\n{lang.upper()}:")
+            for name, description in voices.items():
+                marker = " (default)" if name == default else ""
+                print(f"  {name:20} - {description}{marker}")
+
+        print("\n=== Chatterbox ===")
+        print("Voice cloning engine (--voice <path_to_reference.wav>)")
+        from .chatterbox_tts import list_languages as chatterbox_list_languages
+        print(f"Languages: {', '.join(chatterbox_list_languages())}")
 
         print("\n=== XTTS ===")
         print("Uses built-in voice (no selection needed)")
@@ -223,6 +240,60 @@ def main():
 
         try:
             tts = XttsTTS(language=args.lang)
+            wav_files, skipped = tts.synthesize_chunks(
+                chunks=chunks,
+                output_dir=chunks_dir,
+                progress_callback=progress_fn,
+                resume=args.resume,
+            )
+        except Exception as e:
+            print(f"Error during synthesis: {e}", file=sys.stderr)
+            return 1
+
+    elif args.engine == "kokoro":
+        from .kokoro_tts import KokoroTTS, list_languages as kokoro_list_languages, DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+
+        # Validate language
+        kokoro_languages = kokoro_list_languages()
+        if args.lang not in kokoro_languages:
+            print(f"Error: Language '{args.lang}' not supported by Kokoro", file=sys.stderr)
+            print(f"Available: {', '.join(kokoro_languages)}", file=sys.stderr)
+            return 1
+
+        # Set default voice
+        voice = args.voice or KOKORO_DEFAULT_VOICES[args.lang]
+
+        if not args.quiet:
+            print(f"Synthesizing with Kokoro voice: {voice} ({args.lang})", file=sys.stderr)
+
+        try:
+            tts = KokoroTTS(language=args.lang, voice=voice)
+            wav_files, skipped = tts.synthesize_chunks(
+                chunks=chunks,
+                output_dir=chunks_dir,
+                progress_callback=progress_fn,
+                resume=args.resume,
+            )
+        except Exception as e:
+            print(f"Error during synthesis: {e}", file=sys.stderr)
+            return 1
+
+    elif args.engine == "chatterbox":
+        from .chatterbox_tts import ChatterboxTTS, list_languages as chatterbox_list_languages
+
+        # Validate language
+        chatterbox_languages = chatterbox_list_languages()
+        if args.lang not in chatterbox_languages:
+            print(f"Error: Language '{args.lang}' not supported by Chatterbox", file=sys.stderr)
+            print(f"Available: {', '.join(chatterbox_languages)}", file=sys.stderr)
+            return 1
+
+        if not args.quiet:
+            voice_info = f" with reference: {args.voice}" if args.voice else ""
+            print(f"Synthesizing with Chatterbox ({args.lang}){voice_info}", file=sys.stderr)
+
+        try:
+            tts = ChatterboxTTS(language=args.lang, voice=args.voice)
             wav_files, skipped = tts.synthesize_chunks(
                 chunks=chunks,
                 output_dir=chunks_dir,

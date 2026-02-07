@@ -10,4 +10,5 @@ services:
       - ./models/torch:/root/.cache/torch/hub
       - ./models/tts:/root/.local/share/tts
       - ./models/piper:/data/piper-models
+      - ./models/huggingface:/root/.cache/huggingface/hub
     working_dir: /app

@@ -69,6 +69,20 @@ if [ -z "$VOICE" ]; then
                 *) VOICE="en_US-lessac-medium" ;;
             esac
             ;;
+        kokoro)
+            case $LANG in
+                en) VOICE="af_heart" ;;
+                en_gb) VOICE="bf_alice" ;;
+                es) VOICE="ef_dora" ;;
+                fr) VOICE="ff_siwis" ;;
+                ja) VOICE="jf_alpha" ;;
+                zh) VOICE="zf_xiaobei" ;;
+                *) VOICE="af_heart" ;;
+            esac
+            ;;
+        chatterbox)
+            VOICE=""
+            ;;
     esac
 fi
 
@@ -84,13 +98,15 @@ if [ -z "$INPUT_FILE" ]; then
     echo ""
     echo "Options:"
     echo "  --lang       Language: ru (default), en"
-    echo "  --engine     TTS engine: silero (default), piper (fast, good English), xtts (slow, best)"
+    echo "  --engine     TTS engine: silero (default), piper, kokoro, chatterbox, xtts"
     echo "  --clean      Start fresh, removing existing chunks"
     echo "  --background Run in background, logs saved to data/logs/"
     echo ""
     echo "Engines:"
     echo "  silero       Fast, good Russian, basic English"
     echo "  piper        Fast, good US English, lightweight"
+    echo "  kokoro       Fast, multi-voice English (Apache 2.0, 82M params)"
+    echo "  chatterbox   Voice cloning, English turbo + 23 languages (MIT)"
     echo "  xtts         Slow, excellent quality for all languages"
     echo ""
     echo "Silero voices:"
@@ -101,11 +117,22 @@ if [ -z "$INPUT_FILE" ]; then
     echo "  English (en): en_US-lessac-medium (default), en_US-lessac-high, en_US-amy-medium"
     echo "  Russian (ru): ru_RU-ruslan-medium (default), ru_RU-irina-medium"
     echo ""
+    echo "Kokoro voices:"
+    echo "  English (en):    af_heart (default), am_adam, af_bella, am_michael, ..."
+    echo "  British (en_gb): bf_alice (default), bm_daniel, bf_emma, ..."
+    echo "  Also: es, fr, ja, zh, hi, it, pt"
+    echo ""
+    echo "Chatterbox voices:"
+    echo "  Pass --voice <path_to_reference.wav> for voice cloning (optional)"
+    echo "  Languages: en, ru, es, fr, de, it, pt, pl, tr, nl, cs, ar, zh, ja, ko, hu, ..."
+    echo ""
     echo "Output: Audio file saved next to the input file (e.g., book.epub -> book.mp3)"
     echo ""
     echo "Example:"
     echo "  $0 /path/to/books/mybook.epub"
     echo "  $0 /path/to/books/mybook.epub --engine piper --lang en"
+    echo "  $0 /path/to/books/english_book.epub --lang en --engine kokoro"
+    echo "  $0 /path/to/books/english_book.epub --lang en --engine chatterbox"
     echo "  $0 /path/to/books/english_book.epub --lang en --engine xtts"
     echo "  $0 /path/to/books/mybook.epub --background"
     exit 1
@@ -216,8 +243,8 @@ DOCKER_ARGS=(
     "--resume"
 )
 
-# Add voice for Silero and Piper
-if [ -n "$VOICE" ] && [ "$ENGINE" != "xtts" ]; then
+# Add voice if set
+if [ -n "$VOICE" ]; then
     DOCKER_ARGS+=("--voice" "$VOICE")
 fi
 
@@ -229,6 +256,12 @@ case $ENGINE in
         ;;
     piper)
         echo -e "${YELLOW}Note: Piper is fast with good English quality${NC}"
+        ;;
+    kokoro)
+        echo -e "${YELLOW}Note: Kokoro is fast with excellent multi-voice English${NC}"
+        ;;
+    chatterbox)
+        echo -e "${YELLOW}Note: Chatterbox supports voice cloning with reference audio${NC}"
         ;;
 esac
 docker compose run --rm tts "${DOCKER_ARGS[@]}"
