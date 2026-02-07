@@ -9,11 +9,12 @@ from piper import PiperVoice
 # Models are downloaded from https://huggingface.co/rhasspy/piper-voices
 VOICES = {
     "en": {
-        "en_US-lessac-medium": "US English, male, medium quality (default)",
-        "en_US-lessac-high": "US English, male, high quality",
+        "en_US-lessac-medium": "US English, female, medium quality",
+        "en_US-lessac-high": "US English, female, high quality",
         "en_US-libritts-high": "US English, neutral, high quality",
         "en_US-amy-medium": "US English, female, medium quality",
-        "en_US-ryan-medium": "US English, male, medium quality",
+        "en_US-ryan-medium": "US English, male, medium quality (default)",
+        "en_US-ryan-high": "US English, male, high quality",
         "en_GB-alan-medium": "UK English, male, medium quality",
     },
     "ru": {
@@ -23,7 +24,7 @@ VOICES = {
 }
 
 DEFAULT_VOICES = {
-    "en": "en_US-lessac-medium",
+    "en": "en_US-ryan-medium",
     "ru": "ru_RU-ruslan-medium",
 }
 

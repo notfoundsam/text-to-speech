@@ -64,9 +64,9 @@ if [ -z "$VOICE" ]; then
             ;;
         piper)
             case $LANG in
-                en) VOICE="en_US-lessac-medium" ;;
+                en) VOICE="en_US-ryan-medium" ;;
                 ru) VOICE="ru_RU-ruslan-medium" ;;
-                *) VOICE="en_US-lessac-medium" ;;
+                *) VOICE="en_US-ryan-medium" ;;
             esac
             ;;
         kokoro)
