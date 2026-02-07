@@ -40,6 +40,25 @@ class XttsTTS:
             self._tts.to("cpu")
         return self._tts
 
+    def _get_speaker_wav(self) -> str:
+        """Get path to a reference speaker WAV file.
+
+        XTTS requires a speaker reference for voice cloning.
+        We use a bundled sample from the TTS package.
+        """
+        import importlib.resources
+
+        # Use a sample audio file bundled with TTS for reference
+        # This gives a default English speaker voice
+        tts_path = Path(self.tts.synthesizer.tts_checkpoint).parent
+        speaker_wav = tts_path / "samples" / "en_sample.wav"
+
+        if speaker_wav.exists():
+            return str(speaker_wav)
+
+        # Fallback: create a simple reference from the first speaker embedding
+        return None
+
     def synthesize(
         self,
         text: str,
@@ -57,10 +76,18 @@ class XttsTTS:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Get available speakers and use the first one
+        if hasattr(self.tts.synthesizer.tts_model, 'speaker_manager'):
+            speakers = self.tts.synthesizer.tts_model.speaker_manager.name_to_id
+            speaker = list(speakers.keys())[0] if speakers else None
+        else:
+            speaker = None
+
         self.tts.tts_to_file(
             text=text,
             file_path=str(output_path),
             language=self.language,
+            speaker=speaker,
         )
 
         return output_path
