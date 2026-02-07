@@ -1,6 +1,10 @@
 """Coqui XTTS v2 synthesis module."""
 
+import os
 from pathlib import Path
+
+# Auto-accept XTTS license (for personal/non-commercial use)
+os.environ["COQUI_TOS_AGREED"] = "1"
 
 import torch
 from TTS.api import TTS
