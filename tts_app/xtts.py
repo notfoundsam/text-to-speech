@@ -7,6 +7,15 @@ from pathlib import Path
 os.environ["COQUI_TOS_AGREED"] = "1"
 
 import torch
+
+# Coqui TTS models require unpickling custom classes, which PyTorch 2.6+ blocks by default
+torch.serialization.add_safe_globals([])
+_original_torch_load = torch.load
+def _patched_torch_load(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _original_torch_load(*args, **kwargs)
+torch.load = _patched_torch_load
+
 from TTS.api import TTS
 
 # XTTS supported languages
