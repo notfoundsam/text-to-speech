@@ -74,6 +74,50 @@ def extract_from_epub(path: str | Path) -> str:
     return "\n".join(parts)
 
 
+def extract_from_fb2(path: str | Path) -> str:
+    """Extract text from an FB2 file.
+
+    Args:
+        path: Path to the FB2 file.
+
+    Returns:
+        Extracted text content.
+
+    Raises:
+        FileNotFoundError: If the file doesn't exist.
+        ValueError: If no text could be extracted.
+    """
+    from bs4 import BeautifulSoup
+
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"FB2 file not found: {path}")
+
+    with open(path, "rb") as f:
+        soup = BeautifulSoup(f, "lxml-xml")
+
+    body = soup.find("body")
+    if not body:
+        raise ValueError(f"No <body> found in FB2: {path}")
+
+    parts = []
+    for section in body.find_all("section"):
+        text = section.get_text(separator="\n")
+        if text.strip():
+            parts.append(text)
+
+    if not parts:
+        # Fallback: get all text from body
+        text = body.get_text(separator="\n")
+        if text.strip():
+            parts.append(text)
+
+    if not parts:
+        raise ValueError(f"No text extracted from FB2: {path}")
+
+    return "\n".join(parts)
+
+
 def extract_text(path: str | Path) -> str:
     """Extract text from a PDF or EPUB file based on extension.
 
@@ -93,5 +137,7 @@ def extract_text(path: str | Path) -> str:
         return extract_from_pdf(path)
     elif suffix == ".epub":
         return extract_from_epub(path)
+    elif suffix == ".fb2":
+        return extract_from_fb2(path)
     else:
-        raise ValueError(f"Unsupported file format: {suffix}. Use PDF or EPUB.")
+        raise ValueError(f"Unsupported file format: {suffix}. Use PDF, EPUB, or FB2.")
