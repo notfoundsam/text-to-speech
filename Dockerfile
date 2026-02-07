@@ -8,7 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install base dependencies (PyTorch - large, rarely changes)
+COPY requirements-base.txt .
+RUN pip install --no-cache-dir -r requirements-base.txt
+
+# Install app dependencies (smaller, may change more often)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
