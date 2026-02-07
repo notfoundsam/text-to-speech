@@ -1,4 +1,4 @@
-"""Command-line interface for Russian TTS."""
+"""Command-line interface for TTS."""
 
 import argparse
 import sys
@@ -6,7 +6,14 @@ from pathlib import Path
 
 from .extract import extract_text
 from .preprocess import preprocess
-from .synthesize import SileroTTS, list_voices, DEFAULT_VOICE, DEFAULT_SAMPLE_RATE
+from .synthesize import (
+    SileroTTS,
+    list_voices,
+    list_languages,
+    DEFAULT_LANGUAGE,
+    DEFAULT_VOICES,
+    DEFAULT_SAMPLE_RATE,
+)
 
 
 def print_progress(current: int, total: int):
@@ -23,7 +30,7 @@ def print_progress(current: int, total: int):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert PDF/EPUB to Russian speech using Silero TTS",
+        description="Convert PDF/EPUB to speech using Silero TTS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -40,10 +47,16 @@ def main():
     )
 
     parser.add_argument(
+        "--lang",
+        default=DEFAULT_LANGUAGE,
+        choices=list_languages(),
+        help=f"Language (default: {DEFAULT_LANGUAGE})",
+    )
+
+    parser.add_argument(
         "--voice",
-        default=DEFAULT_VOICE,
-        choices=list(list_voices().keys()),
-        help=f"Voice to use (default: {DEFAULT_VOICE})",
+        default=None,
+        help="Voice to use (default: depends on language). Use --list-voices to see options.",
     )
 
     parser.add_argument(
@@ -83,14 +96,30 @@ def main():
 
     # Handle --list-voices
     if args.list_voices:
-        print("Available voices:")
-        for name, description in list_voices().items():
-            print(f"  {name:10} - {description}")
+        all_voices = list_voices()
+        for lang, voices in all_voices.items():
+            default = DEFAULT_VOICES[lang]
+            print(f"\n{lang.upper()} voices:")
+            for name, description in voices.items():
+                marker = " (default)" if name == default else ""
+                print(f"  {name:10} - {description}{marker}")
         return 0
 
     # Require input file if not listing voices
     if not args.input:
         parser.error("the following arguments are required: input")
+
+    # Set default voice for language if not specified
+    voice = args.voice
+    if voice is None:
+        voice = DEFAULT_VOICES[args.lang]
+
+    # Validate voice for selected language
+    available_voices = list_voices(args.lang)
+    if voice not in available_voices:
+        print(f"Error: Voice '{voice}' not available for language '{args.lang}'", file=sys.stderr)
+        print(f"Available voices: {', '.join(available_voices.keys())}", file=sys.stderr)
+        return 1
 
     input_path = Path(args.input)
     chunks_dir = Path(args.chunks_dir)
@@ -123,9 +152,9 @@ def main():
 
     # Synthesize
     if not args.quiet:
-        print(f"Synthesizing with voice: {args.voice}", file=sys.stderr)
+        print(f"Synthesizing with voice: {voice} ({args.lang})", file=sys.stderr)
 
-    tts = SileroTTS(sample_rate=args.sample_rate)
+    tts = SileroTTS(language=args.lang, sample_rate=args.sample_rate)
 
     progress_fn = None if args.quiet else print_progress
 
@@ -133,7 +162,7 @@ def main():
         wav_files, skipped = tts.synthesize_chunks(
             chunks=chunks,
             output_dir=chunks_dir,
-            voice=args.voice,
+            voice=voice,
             progress_callback=progress_fn,
             resume=args.resume,
         )

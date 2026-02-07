@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Convert PDF/EPUB to Russian speech audio
-# Usage: ./scripts/convert.sh <input_file> [voice] [--clean] [--background]
+# Convert PDF/EPUB to speech audio
+# Usage: ./scripts/convert.sh <input_file> [voice] [--lang <code>] [--clean] [--background]
 #
 set -e
 
@@ -20,46 +20,74 @@ cd "$PROJECT_DIR"
 # Parse arguments
 CLEAN_START=false
 BACKGROUND=false
+LANG="ru"
 POSITIONAL_ARGS=()
 
-for arg in "$@"; do
-    case $arg in
+while [[ $# -gt 0 ]]; do
+    case $1 in
         --clean)
             CLEAN_START=true
+            shift
             ;;
         --background)
             BACKGROUND=true
+            shift
+            ;;
+        --lang)
+            LANG="$2"
+            shift 2
             ;;
         *)
-            POSITIONAL_ARGS+=("$arg")
+            POSITIONAL_ARGS+=("$1")
+            shift
             ;;
     esac
 done
 
 INPUT_FILE="${POSITIONAL_ARGS[0]:-}"
-VOICE="${POSITIONAL_ARGS[1]:-aidar}"
+VOICE="${POSITIONAL_ARGS[1]:-}"
+
+# Set default voice based on language
+if [ -z "$VOICE" ]; then
+    case $LANG in
+        ru)
+            VOICE="aidar"
+            ;;
+        en)
+            VOICE="en_0"
+            ;;
+        *)
+            VOICE="aidar"
+            ;;
+    esac
+fi
 
 # Validate input
 if [ -z "$INPUT_FILE" ]; then
     echo -e "${RED}Error: No input file specified${NC}"
     echo ""
-    echo "Usage: $0 <input_file> [voice] [--clean] [--background]"
+    echo "Usage: $0 <input_file> [voice] [--lang <code>] [--clean] [--background]"
     echo ""
     echo "Arguments:"
     echo "  input_file   Path to PDF or EPUB file"
-    echo "  voice        Voice name: xenia, aidar, baya, kseniya, eugene (default: aidar)"
+    echo "  voice        Voice name (default: aidar for ru, en_0 for en)"
     echo ""
     echo "Options:"
+    echo "  --lang       Language: ru (default), en"
     echo "  --clean      Start fresh, removing existing chunks"
     echo "  --background Run in background, logs saved to data/logs/"
+    echo ""
+    echo "Voices:"
+    echo "  Russian (ru): aidar, baya, kseniya, xenia, eugene"
+    echo "  English (en): en_0, en_1, en_2, en_3, en_4"
     echo ""
     echo "Output: Audio file saved next to the input file (e.g., book.epub -> book.mp3)"
     echo ""
     echo "Example:"
     echo "  $0 /path/to/books/mybook.epub"
     echo "  $0 /path/to/books/mybook.pdf aidar"
+    echo "  $0 /path/to/books/english_book.epub --lang en"
     echo "  $0 /path/to/books/mybook.epub --background"
-    echo "  $0 /path/to/books/mybook.epub --clean --background"
     exit 1
 fi
 
@@ -86,7 +114,7 @@ if [ "$BACKGROUND" = true ]; then
     LOG_FILE="$PROJECT_DIR/data/logs/${FILENAME}_${TIMESTAMP}.log"
 
     # Build args without --background to avoid infinite loop
-    ARGS=("$FULL_INPUT_PATH" "$VOICE")
+    ARGS=("$FULL_INPUT_PATH" "$VOICE" "--lang" "$LANG")
     if [ "$CLEAN_START" = true ]; then
         ARGS+=("--clean")
     fi
@@ -96,8 +124,9 @@ if [ "$BACKGROUND" = true ]; then
     PID=$!
 
     echo "Started background conversion (PID: $PID)"
-    echo "  Input:  $FULL_INPUT_PATH"
-    echo "  Log:    $LOG_FILE"
+    echo "  Input:    $FULL_INPUT_PATH"
+    echo "  Language: $LANG"
+    echo "  Log:      $LOG_FILE"
     echo ""
     echo "Monitor progress:"
     echo "  tail -f $LOG_FILE"
@@ -127,10 +156,11 @@ CHUNKS_DIR="data/chunks/$BOOK_HASH"
 mkdir -p "$CHUNKS_DIR"
 
 echo -e "${GREEN}Starting conversion...${NC}"
-echo "  Input:  $FULL_INPUT_PATH"
-echo "  Output: $INPUT_DIR/$OUTPUT_BASENAME"
-echo "  Voice:  $VOICE"
-echo "  Time:   $(date)"
+echo "  Input:    $FULL_INPUT_PATH"
+echo "  Output:   $INPUT_DIR/$OUTPUT_BASENAME"
+echo "  Language: $LANG"
+echo "  Voice:    $VOICE"
+echo "  Time:     $(date)"
 
 # Copy input file to working directory
 cp "$FULL_INPUT_PATH" "data/input/$BASENAME"
@@ -139,13 +169,13 @@ cp "$FULL_INPUT_PATH" "data/input/$BASENAME"
 EXISTING_CHUNKS=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav 2>/dev/null | wc -l | tr -d ' ')
 if [ "$EXISTING_CHUNKS" -gt 0 ]; then
     if [ "$CLEAN_START" = true ]; then
-        echo "  Mode:   Clean start (removing $EXISTING_CHUNKS existing chunks)"
+        echo "  Mode:     Clean start (removing $EXISTING_CHUNKS existing chunks)"
         rm -f "$CHUNKS_DIR"/chunk_*.wav "$CHUNKS_DIR"/files.txt
     else
-        echo "  Mode:   Resume (found $EXISTING_CHUNKS existing chunks)"
+        echo "  Mode:     Resume (found $EXISTING_CHUNKS existing chunks)"
     fi
 else
-    echo "  Mode:   Fresh start"
+    echo "  Mode:     Fresh start"
 fi
 echo ""
 
@@ -154,6 +184,7 @@ echo -e "${YELLOW}Running TTS synthesis in Docker...${NC}"
 docker compose run --rm tts \
     "/data/input/$BASENAME" \
     --chunks-dir "/data/chunks/$BOOK_HASH" \
+    --lang "$LANG" \
     --voice "$VOICE" \
     --resume
 

@@ -4,28 +4,54 @@ from pathlib import Path
 
 import torch
 
-# Available Russian voices in Silero v4
+# Available voices per language
 VOICES = {
-    "xenia": "Female, clear and neutral",
-    "aidar": "Male, deep and calm",
-    "baya": "Female, warm and expressive",
-    "kseniya": "Female, young and energetic",
-    "eugene": "Male, standard and professional",
+    "ru": {
+        "aidar": "Male, deep and calm",
+        "baya": "Female, warm and expressive",
+        "kseniya": "Female, young and energetic",
+        "xenia": "Female, clear and neutral",
+        "eugene": "Male, standard and professional",
+    },
+    "en": {
+        "en_0": "Male, neutral",
+        "en_1": "Male, calm",
+        "en_2": "Female, clear",
+        "en_3": "Female, expressive",
+        "en_4": "Male, deep",
+    },
 }
 
-DEFAULT_VOICE = "aidar"
+# Default voices per language
+DEFAULT_VOICES = {
+    "ru": "aidar",
+    "en": "en_0",
+}
+
+# Silero model speakers per language
+MODEL_SPEAKERS = {
+    "ru": "v4_ru",
+    "en": "v3_en",
+}
+
+DEFAULT_LANGUAGE = "ru"
 DEFAULT_SAMPLE_RATE = 48000
 
 
 class SileroTTS:
     """Wrapper for Silero TTS model."""
 
-    def __init__(self, sample_rate: int = DEFAULT_SAMPLE_RATE):
+    def __init__(self, language: str = DEFAULT_LANGUAGE, sample_rate: int = DEFAULT_SAMPLE_RATE):
         """Initialize Silero TTS model.
 
         Args:
+            language: Language code ('ru' or 'en').
             sample_rate: Audio sample rate (24000 or 48000).
         """
+        if language not in VOICES:
+            raise ValueError(f"Unsupported language: {language}. Available: {list(VOICES.keys())}")
+
+        self.language = language
         self.sample_rate = sample_rate
         self._model = None
 
@@ -36,8 +62,8 @@ class SileroTTS:
             self._model, _ = torch.hub.load(
                 repo_or_dir="snakers4/silero-models",
                 model="silero_tts",
-                language="ru",
-                speaker="v4_ru",
+                language=self.language,
+                speaker=MODEL_SPEAKERS[self.language],
             )
         return self._model
 
@@ -45,14 +71,14 @@ class SileroTTS:
         self,
         text: str,
         output_path: str | Path,
-        voice: str = DEFAULT_VOICE,
+        voice: str | None = None,
     ) -> Path:
         """Synthesize speech from text.
 
         Args:
             text: Text to synthesize.
             output_path: Path for output WAV file.
-            voice: Voice name (see VOICES dict).
+            voice: Voice name (see VOICES dict). If None, uses default for language.
 
         Returns:
             Path to the generated WAV file.
@@ -60,8 +86,12 @@ class SileroTTS:
         Raises:
             ValueError: If voice is not available.
         """
-        if voice not in VOICES:
-            raise ValueError(f"Unknown voice: {voice}. Available: {list(VOICES.keys())}")
+        if voice is None:
+            voice = DEFAULT_VOICES[self.language]
+
+        available_voices = VOICES[self.language]
+        if voice not in available_voices:
+            raise ValueError(f"Unknown voice: {voice}. Available for {self.language}: {list(available_voices.keys())}")
 
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,21 +109,21 @@ class SileroTTS:
         self,
         chunks: list[str],
         output_dir: str | Path,
-        voice: str = DEFAULT_VOICE,
+        voice: str | None = None,
         progress_callback=None,
         resume: bool = False,
-    ) -> list[Path]:
+    ) -> tuple[list[Path], int]:
         """Synthesize multiple chunks to WAV files.
 
         Args:
             chunks: List of text chunks.
             output_dir: Directory for output WAV files.
-            voice: Voice name.
+            voice: Voice name. If None, uses default for language.
             progress_callback: Optional callback(current, total) for progress.
             resume: If True, skip existing chunks.
 
         Returns:
-            List of paths to generated WAV files.
+            Tuple of (list of paths to generated WAV files, number of skipped chunks).
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -125,10 +155,26 @@ class SileroTTS:
         return wav_files, skipped
 
 
-def list_voices() -> dict[str, str]:
+def list_voices(language: str | None = None) -> dict:
     """Get available voices and their descriptions.
+
+    Args:
+        language: Language code to filter by. If None, returns all languages.
 
     Returns:
         Dictionary mapping voice names to descriptions.
     """
-    return VOICES.copy()
+    if language is None:
+        return {lang: voices.copy() for lang, voices in VOICES.items()}
+    if language not in VOICES:
+        raise ValueError(f"Unsupported language: {language}. Available: {list(VOICES.keys())}")
+    return VOICES[language].copy()
+
+
+def list_languages() -> list[str]:
+    """Get available language codes.
+
+    Returns:
+        List of language codes.
+    """
+    return list(VOICES.keys())
