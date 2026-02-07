@@ -52,17 +52,22 @@ done
 INPUT_FILE="${POSITIONAL_ARGS[0]:-}"
 VOICE="${POSITIONAL_ARGS[1]:-}"
 
-# Set default voice based on language (only for Silero)
-if [ -z "$VOICE" ] && [ "$ENGINE" = "silero" ]; then
-    case $LANG in
-        ru)
-            VOICE="aidar"
+# Set default voice based on engine and language
+if [ -z "$VOICE" ]; then
+    case $ENGINE in
+        silero)
+            case $LANG in
+                ru) VOICE="aidar" ;;
+                en) VOICE="en_0" ;;
+                *) VOICE="aidar" ;;
+            esac
             ;;
-        en)
-            VOICE="en_0"
-            ;;
-        *)
-            VOICE="aidar"
+        piper)
+            case $LANG in
+                en) VOICE="en_US-lessac-medium" ;;
+                ru) VOICE="ru_RU-ruslan-medium" ;;
+                *) VOICE="en_US-lessac-medium" ;;
+            esac
             ;;
     esac
 fi
@@ -75,27 +80,32 @@ if [ -z "$INPUT_FILE" ]; then
     echo ""
     echo "Arguments:"
     echo "  input_file   Path to PDF or EPUB file"
-    echo "  voice        Voice name (Silero only, default: aidar for ru, en_0 for en)"
+    echo "  voice        Voice name (optional, see below)"
     echo ""
     echo "Options:"
-    echo "  --lang       Language: ru (default), en, and more"
-    echo "  --engine     TTS engine: silero (default, fast) or xtts (high quality)"
+    echo "  --lang       Language: ru (default), en"
+    echo "  --engine     TTS engine: silero (default), piper (fast, good English), xtts (slow, best)"
     echo "  --clean      Start fresh, removing existing chunks"
     echo "  --background Run in background, logs saved to data/logs/"
     echo ""
     echo "Engines:"
     echo "  silero       Fast, good Russian, basic English"
-    echo "  xtts         Slower, excellent quality for all languages"
+    echo "  piper        Fast, good US English, lightweight"
+    echo "  xtts         Slow, excellent quality for all languages"
     echo ""
     echo "Silero voices:"
-    echo "  Russian (ru): aidar, baya, kseniya, xenia, eugene"
-    echo "  English (en): en_0, en_1, en_2, en_3, en_4"
+    echo "  Russian (ru): aidar (default), baya, kseniya, xenia, eugene"
+    echo "  English (en): en_0 (default), en_1, en_2, en_3, en_4"
+    echo ""
+    echo "Piper voices:"
+    echo "  English (en): en_US-lessac-medium (default), en_US-lessac-high, en_US-amy-medium"
+    echo "  Russian (ru): ru_RU-ruslan-medium (default), ru_RU-irina-medium"
     echo ""
     echo "Output: Audio file saved next to the input file (e.g., book.epub -> book.mp3)"
     echo ""
     echo "Example:"
     echo "  $0 /path/to/books/mybook.epub"
-    echo "  $0 /path/to/books/mybook.epub --engine xtts"
+    echo "  $0 /path/to/books/mybook.epub --engine piper --lang en"
     echo "  $0 /path/to/books/english_book.epub --lang en --engine xtts"
     echo "  $0 /path/to/books/mybook.epub --background"
     exit 1
@@ -175,7 +185,7 @@ echo "  Input:    $FULL_INPUT_PATH"
 echo "  Output:   $INPUT_DIR/$OUTPUT_BASENAME"
 echo "  Language: $LANG"
 echo "  Engine:   $ENGINE"
-if [ "$ENGINE" = "silero" ] && [ -n "$VOICE" ]; then
+if [ -n "$VOICE" ]; then
     echo "  Voice:    $VOICE"
 fi
 echo "  Time:     $(date)"
@@ -206,16 +216,21 @@ DOCKER_ARGS=(
     "--resume"
 )
 
-# Add voice for Silero
-if [ "$ENGINE" = "silero" ] && [ -n "$VOICE" ]; then
+# Add voice for Silero and Piper
+if [ -n "$VOICE" ] && [ "$ENGINE" != "xtts" ]; then
     DOCKER_ARGS+=("--voice" "$VOICE")
 fi
 
 # Run TTS in Docker container
 echo -e "${YELLOW}Running TTS synthesis in Docker...${NC}"
-if [ "$ENGINE" = "xtts" ]; then
-    echo -e "${YELLOW}Note: XTTS is slower but produces higher quality audio${NC}"
-fi
+case $ENGINE in
+    xtts)
+        echo -e "${YELLOW}Note: XTTS is slower but produces higher quality audio${NC}"
+        ;;
+    piper)
+        echo -e "${YELLOW}Note: Piper is fast with good English quality${NC}"
+        ;;
+esac
 docker compose run --rm tts "${DOCKER_ARGS[@]}"
 
 # Check if chunks were created

@@ -9,4 +9,5 @@ services:
       - ./data/samples:/data/samples
       - ./models/torch:/root/.cache/torch/hub
       - ./models/tts:/root/.local/share/tts
+      - ./models/piper:/data/piper-models
     working_dir: /app

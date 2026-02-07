@@ -11,17 +11,18 @@ from .synthesize import (
     list_voices as silero_list_voices,
     list_languages as silero_list_languages,
     DEFAULT_LANGUAGE,
-    DEFAULT_VOICES,
+    DEFAULT_VOICES as SILERO_DEFAULT_VOICES,
     DEFAULT_SAMPLE_RATE,
 )
 
-# Maximum chunk size per language/engine
+# Maximum chunk size per engine/language
 MAX_CHUNK_CHARS = {
     "silero": {"ru": 1000, "en": 250},
-    "xtts": {"default": 400},  # XTTS works best with shorter chunks
+    "xtts": {"default": 400},
+    "piper": {"default": 500},
 }
 
-ENGINES = ["silero", "xtts"]
+ENGINES = ["silero", "xtts", "piper"]
 
 
 def print_progress(current: int, total: int):
@@ -58,7 +59,7 @@ def main():
         "--engine",
         default="silero",
         choices=ENGINES,
-        help="TTS engine: silero (fast) or xtts (high quality). Default: silero",
+        help="TTS engine: silero (fast), piper (fast, good English), xtts (slow, best quality). Default: silero",
     )
 
     parser.add_argument(
@@ -70,14 +71,14 @@ def main():
     parser.add_argument(
         "--voice",
         default=None,
-        help="Voice to use (Silero only). Use --list-voices to see options.",
+        help="Voice to use. Use --list-voices to see options.",
     )
 
     parser.add_argument(
         "--sample-rate",
         type=int,
         default=DEFAULT_SAMPLE_RATE,
-        choices=[24000, 48000],
+        choices=[22050, 24000, 48000],
         help=f"Audio sample rate (default: {DEFAULT_SAMPLE_RATE})",
     )
 
@@ -91,7 +92,7 @@ def main():
     parser.add_argument(
         "--list-voices",
         action="store_true",
-        help="List available voices (Silero only) and exit",
+        help="List available voices and exit",
     )
 
     parser.add_argument(
@@ -110,15 +111,28 @@ def main():
 
     # Handle --list-voices
     if args.list_voices:
-        print("Silero voices:")
-        all_voices = silero_list_voices()
-        for lang, voices in all_voices.items():
-            default = DEFAULT_VOICES[lang]
-            print(f"\n  {lang.upper()}:")
+        print("=== Silero voices ===")
+        all_silero = silero_list_voices()
+        for lang, voices in all_silero.items():
+            default = SILERO_DEFAULT_VOICES[lang]
+            print(f"\n{lang.upper()}:")
             for name, description in voices.items():
                 marker = " (default)" if name == default else ""
-                print(f"    {name:10} - {description}{marker}")
-        print("\nXTTS: Uses built-in voice (no selection needed)")
+                print(f"  {name:10} - {description}{marker}")
+
+        print("\n=== Piper voices ===")
+        from .piper_tts import list_voices as piper_list_voices, DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+        all_piper = piper_list_voices()
+        for lang, voices in all_piper.items():
+            default = PIPER_DEFAULT_VOICES[lang]
+            print(f"\n{lang.upper()}:")
+            for name, description in voices.items():
+                marker = " (default)" if name == default else ""
+                print(f"  {name} - {description}{marker}")
+
+        print("\n=== XTTS ===")
+        print("Uses built-in voice (no selection needed)")
+        print("Languages: en, ru, es, fr, de, it, pt, pl, tr, nl, cs, ar, zh, ja, ko, hu")
         return 0
 
     # Require input file if not listing voices
@@ -144,10 +158,10 @@ def main():
     # Determine max chunk size
     if args.max_chunk_chars:
         max_chars = args.max_chunk_chars
-    elif args.engine == "xtts":
-        max_chars = MAX_CHUNK_CHARS["xtts"]["default"]
+    elif args.engine in MAX_CHUNK_CHARS:
+        max_chars = MAX_CHUNK_CHARS[args.engine].get(args.lang, MAX_CHUNK_CHARS[args.engine].get("default", 500))
     else:
-        max_chars = MAX_CHUNK_CHARS["silero"].get(args.lang, 500)
+        max_chars = 500
 
     # Preprocess
     if not args.quiet:
@@ -162,11 +176,41 @@ def main():
     if not args.quiet:
         print(f"Generated {len(chunks)} chunks", file=sys.stderr)
 
+    progress_fn = None if args.quiet else print_progress
+
     # Initialize TTS engine
-    if args.engine == "xtts":
+    if args.engine == "piper":
+        from .piper_tts import PiperTTS, list_voices as piper_list_voices, list_languages as piper_list_languages, DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+
+        # Validate language
+        piper_languages = piper_list_languages()
+        if args.lang not in piper_languages:
+            print(f"Error: Language '{args.lang}' not supported by Piper", file=sys.stderr)
+            print(f"Available: {', '.join(piper_languages)}", file=sys.stderr)
+            return 1
+
+        # Set default voice
+        voice = args.voice or PIPER_DEFAULT_VOICES[args.lang]
+
+        if not args.quiet:
+            print(f"Synthesizing with Piper voice: {voice} ({args.lang})", file=sys.stderr)
+
+        try:
+            tts = PiperTTS(language=args.lang, voice=voice)
+            wav_files, skipped = tts.synthesize_chunks(
+                chunks=chunks,
+                output_dir=chunks_dir,
+                progress_callback=progress_fn,
+                resume=args.resume,
+            )
+        except Exception as e:
+            print(f"Error during synthesis: {e}", file=sys.stderr)
+            return 1
+
+    elif args.engine == "xtts":
         from .xtts import XttsTTS, list_languages as xtts_list_languages
 
-        # Validate language for XTTS
+        # Validate language
         xtts_languages = xtts_list_languages()
         if args.lang not in xtts_languages:
             print(f"Error: Language '{args.lang}' not supported by XTTS", file=sys.stderr)
@@ -177,10 +221,8 @@ def main():
             print(f"Synthesizing with XTTS ({args.lang})", file=sys.stderr)
             print("Note: XTTS is slower but higher quality", file=sys.stderr)
 
-        tts = XttsTTS(language=args.lang)
-        progress_fn = None if args.quiet else print_progress
-
         try:
+            tts = XttsTTS(language=args.lang)
             wav_files, skipped = tts.synthesize_chunks(
                 chunks=chunks,
                 output_dir=chunks_dir,
@@ -192,19 +234,17 @@ def main():
             return 1
 
     else:  # silero
-        # Validate language for Silero
+        # Validate language
         silero_languages = silero_list_languages()
         if args.lang not in silero_languages:
             print(f"Error: Language '{args.lang}' not supported by Silero", file=sys.stderr)
             print(f"Available: {', '.join(silero_languages)}", file=sys.stderr)
             return 1
 
-        # Set default voice for language if not specified
-        voice = args.voice
-        if voice is None:
-            voice = DEFAULT_VOICES[args.lang]
+        # Set default voice
+        voice = args.voice or SILERO_DEFAULT_VOICES[args.lang]
 
-        # Validate voice for selected language
+        # Validate voice
         available_voices = silero_list_voices(args.lang)
         if voice not in available_voices:
             print(f"Error: Voice '{voice}' not available for language '{args.lang}'", file=sys.stderr)
@@ -214,10 +254,8 @@ def main():
         if not args.quiet:
             print(f"Synthesizing with Silero voice: {voice} ({args.lang})", file=sys.stderr)
 
-        tts = SileroTTS(language=args.lang, sample_rate=args.sample_rate)
-        progress_fn = None if args.quiet else print_progress
-
         try:
+            tts = SileroTTS(language=args.lang, sample_rate=args.sample_rate)
             wav_files, skipped = tts.synthesize_chunks(
                 chunks=chunks,
                 output_dir=chunks_dir,
