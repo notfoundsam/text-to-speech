@@ -8,3 +8,4 @@ ebooklib>=0.18
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 TTS>=0.22.0
+transformers>=4.39.0,<4.45.0
