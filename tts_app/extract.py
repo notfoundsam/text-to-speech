@@ -139,5 +139,13 @@ def extract_text(path: str | Path) -> str:
         return extract_from_epub(path)
     elif suffix == ".fb2":
         return extract_from_fb2(path)
+    elif suffix == ".txt":
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Text file not found: {path}")
+        text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            raise ValueError(f"No text in file: {path}")
+        return text
     else:
-        raise ValueError(f"Unsupported file format: {suffix}. Use PDF, EPUB, or FB2.")
+        raise ValueError(f"Unsupported file format: {suffix}. Use PDF, EPUB, FB2, or TXT.")
