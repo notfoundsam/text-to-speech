@@ -1,7 +1,13 @@
 """Piper TTS synthesis module using piper-tts package."""
 
+import os
 import wave
 from pathlib import Path
+
+# Point espeak-ng to piper's bundled data to avoid conflict with system espeak-ng
+_piper_espeak_data = Path("/usr/local/lib/python3.11/site-packages/piper/espeak-ng-data")
+if _piper_espeak_data.exists():
+    os.environ["ESPEAK_DATA_PATH"] = str(_piper_espeak_data)
 
 from piper import PiperVoice
 
