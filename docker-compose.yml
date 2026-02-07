@@ -1,0 +1,10 @@
+services:
+  tts:
+    build: .
+    volumes:
+      - ./src:/app/src:ro
+      - ./data/input:/data/input:ro
+      - ./data/chunks:/data/chunks
+      - ./data/output:/data/output
+      - ./models:/root/.cache/torch/hub
+    working_dir: /app
