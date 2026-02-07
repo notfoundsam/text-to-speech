@@ -15,6 +15,12 @@ from .synthesize import (
     DEFAULT_SAMPLE_RATE,
 )
 
+# Maximum chunk size per language (English model has stricter limits)
+MAX_CHUNK_CHARS = {
+    "ru": 1000,
+    "en": 250,
+}
+
 
 def print_progress(current: int, total: int):
     """Print progress bar to stderr."""
@@ -70,8 +76,8 @@ def main():
     parser.add_argument(
         "--max-chunk-chars",
         type=int,
-        default=1000,
-        help="Maximum characters per chunk (default: 1000)",
+        default=None,
+        help="Maximum characters per chunk (default: 1000 for ru, 250 for en)",
     )
 
     parser.add_argument(
@@ -141,7 +147,8 @@ def main():
     if not args.quiet:
         print("Preprocessing text...", file=sys.stderr)
 
-    chunks = preprocess(text, max_chunk_chars=args.max_chunk_chars)
+    max_chars = args.max_chunk_chars or MAX_CHUNK_CHARS.get(args.lang, 500)
+    chunks = preprocess(text, max_chunk_chars=max_chars)
 
     if not chunks:
         print("Error: No text chunks to process", file=sys.stderr)
