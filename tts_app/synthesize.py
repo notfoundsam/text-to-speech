@@ -13,7 +13,7 @@ VOICES = {
     "eugene": "Male, standard and professional",
 }
 
-DEFAULT_VOICE = "xenia"
+DEFAULT_VOICE = "aidar"
 DEFAULT_SAMPLE_RATE = 48000
 
 
@@ -81,6 +81,7 @@ class SileroTTS:
         output_dir: str | Path,
         voice: str = DEFAULT_VOICE,
         progress_callback=None,
+        resume: bool = False,
     ) -> list[Path]:
         """Synthesize multiple chunks to WAV files.
 
@@ -89,6 +90,7 @@ class SileroTTS:
             output_dir: Directory for output WAV files.
             voice: Voice name.
             progress_callback: Optional callback(current, total) for progress.
+            resume: If True, skip existing chunks.
 
         Returns:
             List of paths to generated WAV files.
@@ -98,19 +100,29 @@ class SileroTTS:
 
         wav_files = []
         total = len(chunks)
+        skipped = 0
 
         for i, chunk in enumerate(chunks):
             if not chunk.strip():
                 continue
 
             output_path = output_dir / f"chunk_{i:04d}.wav"
+
+            # Skip if file exists and resume is enabled
+            if resume and output_path.exists() and output_path.stat().st_size > 0:
+                wav_files.append(output_path)
+                skipped += 1
+                if progress_callback:
+                    progress_callback(i + 1, total)
+                continue
+
             self.synthesize(chunk, output_path, voice)
             wav_files.append(output_path)
 
             if progress_callback:
                 progress_callback(i + 1, total)
 
-        return wav_files
+        return wav_files, skipped
 
 
 def list_voices() -> dict[str, str]:

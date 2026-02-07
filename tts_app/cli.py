@@ -73,6 +73,12 @@ def main():
         help="Suppress progress output",
     )
 
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from existing chunks (skip already generated files)",
+    )
+
     args = parser.parse_args()
 
     # Handle --list-voices
@@ -124,18 +130,22 @@ def main():
     progress_fn = None if args.quiet else print_progress
 
     try:
-        wav_files = tts.synthesize_chunks(
+        wav_files, skipped = tts.synthesize_chunks(
             chunks=chunks,
             output_dir=chunks_dir,
             voice=args.voice,
             progress_callback=progress_fn,
+            resume=args.resume,
         )
     except Exception as e:
         print(f"Error during synthesis: {e}", file=sys.stderr)
         return 1
 
     if not args.quiet:
-        print(f"Generated {len(wav_files)} WAV files in {chunks_dir}", file=sys.stderr)
+        if skipped > 0:
+            print(f"Skipped {skipped} existing chunks, generated {len(wav_files) - skipped} new", file=sys.stderr)
+        else:
+            print(f"Generated {len(wav_files)} WAV files in {chunks_dir}", file=sys.stderr)
 
     return 0
 
