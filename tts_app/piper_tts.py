@@ -111,7 +111,12 @@ class PiperTTS:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Synthesize to WAV
+        # Pre-configure WAV params in case Piper's generator yields nothing
+        # (e.g., punctuation-only text producing no phonemes in piper-tts 1.4.0+)
         with wave.open(str(output_path), "wb") as wav_file:
+            wav_file.setframerate(self._voice.config.sample_rate)
+            wav_file.setsampwidth(2)
+            wav_file.setnchannels(1)
             self._voice.synthesize(text, wav_file)
 
         return output_path
