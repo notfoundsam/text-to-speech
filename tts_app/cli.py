@@ -22,9 +22,10 @@ MAX_CHUNK_CHARS = {
     "piper": {"default": 500},
     "kokoro": {"default": 400},
     "chatterbox": {"default": 400},
+    "edge": {"default": 2000},
 }
 
-ENGINES = ["silero", "xtts", "piper", "kokoro", "chatterbox"]
+ENGINES = ["silero", "xtts", "piper", "kokoro", "chatterbox", "edge"]
 
 
 def print_progress(current: int, total: int):
@@ -61,7 +62,7 @@ def main():
         "--engine",
         default="silero",
         choices=ENGINES,
-        help="TTS engine: silero (fast), piper (fast, good English), kokoro (fast, multi-voice English), chatterbox (voice cloning), xtts (slow, best quality). Default: silero",
+        help="TTS engine: silero (fast), piper (fast, good English), kokoro (fast, multi-voice English), chatterbox (voice cloning), xtts (slow, best quality), edge (cloud, excellent Russian). Default: silero",
     )
 
     parser.add_argument(
@@ -146,6 +147,16 @@ def main():
         print("Voice cloning engine (--voice <path_to_reference.wav>)")
         from .chatterbox_tts import list_languages as chatterbox_list_languages
         print(f"Languages: {', '.join(chatterbox_list_languages())}")
+
+        print("\n=== Edge-TTS voices ===")
+        from .edge_tts_wrapper import list_voices as edge_list_voices, DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+        all_edge = edge_list_voices()
+        for lang, voices in all_edge.items():
+            default = EDGE_DEFAULT_VOICES[lang]
+            print(f"\n{lang.upper()}:")
+            for name, description in voices.items():
+                marker = " (default)" if name == default else ""
+                print(f"  {name:30} - {description}{marker}")
 
         print("\n=== XTTS ===")
         print("Uses built-in voice (no selection needed)")
@@ -304,6 +315,35 @@ def main():
             print(f"Error during synthesis: {e}", file=sys.stderr)
             return 1
 
+    elif args.engine == "edge":
+        from .edge_tts_wrapper import EdgeTTS, list_languages as edge_list_languages, DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+
+        # Validate language
+        edge_languages = edge_list_languages()
+        if args.lang not in edge_languages:
+            print(f"Error: Language '{args.lang}' not supported by Edge-TTS", file=sys.stderr)
+            print(f"Available: {', '.join(edge_languages)}", file=sys.stderr)
+            return 1
+
+        # Set default voice
+        voice = args.voice or EDGE_DEFAULT_VOICES[args.lang]
+
+        if not args.quiet:
+            print(f"Synthesizing with Edge-TTS voice: {voice} ({args.lang})", file=sys.stderr)
+            print("Note: Edge-TTS requires internet (Microsoft cloud TTS)", file=sys.stderr)
+
+        try:
+            tts = EdgeTTS(language=args.lang, voice=voice)
+            wav_files, skipped = tts.synthesize_chunks(
+                chunks=chunks,
+                output_dir=chunks_dir,
+                progress_callback=progress_fn,
+                resume=args.resume,
+            )
+        except Exception as e:
+            print(f"Error during synthesis: {e}", file=sys.stderr)
+            return 1
+
     else:  # silero
         # Validate language
         silero_languages = silero_list_languages()
@@ -342,7 +382,7 @@ def main():
         if skipped > 0:
             print(f"Skipped {skipped} existing chunks, generated {len(wav_files) - skipped} new", file=sys.stderr)
         else:
-            print(f"Generated {len(wav_files)} WAV files in {chunks_dir}", file=sys.stderr)
+            print(f"Generated {len(wav_files)} audio files in {chunks_dir}", file=sys.stderr)
 
     return 0
 

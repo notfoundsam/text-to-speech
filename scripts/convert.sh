@@ -83,6 +83,14 @@ if [ -z "$VOICE" ]; then
         chatterbox)
             VOICE=""
             ;;
+        edge)
+            case $LANG in
+                ru) VOICE="ru-RU-DmitryNeural" ;;
+                en) VOICE="en-US-GuyNeural" ;;
+                en_gb) VOICE="en-GB-RyanNeural" ;;
+                *) VOICE="ru-RU-DmitryNeural" ;;
+            esac
+            ;;
     esac
 fi
 
@@ -98,7 +106,7 @@ if [ -z "$INPUT_FILE" ]; then
     echo ""
     echo "Options:"
     echo "  --lang       Language: ru (default), en"
-    echo "  --engine     TTS engine: silero (default), piper, kokoro, chatterbox, xtts"
+    echo "  --engine     TTS engine: silero (default), piper, kokoro, chatterbox, edge, xtts"
     echo "  --clean      Start fresh, removing existing chunks"
     echo "  --background Run in background, logs saved to data/logs/"
     echo ""
@@ -107,6 +115,7 @@ if [ -z "$INPUT_FILE" ]; then
     echo "  piper        Fast, good US English, lightweight"
     echo "  kokoro       Fast, multi-voice English (Apache 2.0, 82M params)"
     echo "  chatterbox   Voice cloning, English turbo + 23 languages (MIT)"
+    echo "  edge         Cloud (Microsoft), excellent Russian & English, requires internet"
     echo "  xtts         Slow, excellent quality for all languages"
     echo ""
     echo "Silero voices:"
@@ -122,6 +131,11 @@ if [ -z "$INPUT_FILE" ]; then
     echo "  British (en_gb): bf_alice (default), bm_daniel, bf_emma, ..."
     echo "  Also: es, fr, ja, zh, hi, it, pt"
     echo ""
+    echo "Edge-TTS voices:"
+    echo "  Russian (ru): ru-RU-DmitryNeural (default), ru-RU-SvetlanaNeural"
+    echo "  English (en): en-US-GuyNeural (default), en-US-AriaNeural, en-US-JennyNeural, ..."
+    echo "  British (en_gb): en-GB-RyanNeural (default), en-GB-SoniaNeural"
+    echo ""
     echo "Chatterbox voices:"
     echo "  Pass --voice <path_to_reference.wav> for voice cloning (optional)"
     echo "  Languages: en, ru, es, fr, de, it, pt, pl, tr, nl, cs, ar, zh, ja, ko, hu, ..."
@@ -132,6 +146,7 @@ if [ -z "$INPUT_FILE" ]; then
     echo "  $0 /path/to/books/mybook.epub"
     echo "  $0 /path/to/books/mybook.epub --engine piper --lang en"
     echo "  $0 /path/to/books/english_book.epub --lang en --engine kokoro"
+    echo "  $0 /path/to/books/mybook.epub --lang ru --engine edge"
     echo "  $0 /path/to/books/english_book.epub --lang en --engine chatterbox"
     echo "  $0 /path/to/books/english_book.epub --lang en --engine xtts"
     echo "  $0 /path/to/books/mybook.epub --background"
@@ -220,12 +235,12 @@ echo "  Time:     $(date)"
 # Copy input file to working directory
 cp "$FULL_INPUT_PATH" "data/input/$BASENAME"
 
-# Check for existing chunks
-EXISTING_CHUNKS=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav 2>/dev/null | wc -l | tr -d ' ')
+# Check for existing chunks (both .wav and .mp3)
+EXISTING_CHUNKS=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav "$CHUNKS_DIR"/chunk_*.mp3 2>/dev/null | wc -l | tr -d ' ')
 if [ "$EXISTING_CHUNKS" -gt 0 ]; then
     if [ "$CLEAN_START" = true ]; then
         echo "  Mode:     Clean start (removing $EXISTING_CHUNKS existing chunks)"
-        rm -f "$CHUNKS_DIR"/chunk_*.wav "$CHUNKS_DIR"/files.txt
+        rm -f "$CHUNKS_DIR"/chunk_*.wav "$CHUNKS_DIR"/chunk_*.mp3 "$CHUNKS_DIR"/files.txt
     else
         echo "  Mode:     Resume (found $EXISTING_CHUNKS existing chunks)"
     fi
@@ -263,11 +278,14 @@ case $ENGINE in
     chatterbox)
         echo -e "${YELLOW}Note: Chatterbox supports voice cloning with reference audio${NC}"
         ;;
+    edge)
+        echo -e "${YELLOW}Note: Edge-TTS requires internet (Microsoft cloud TTS)${NC}"
+        ;;
 esac
 docker compose run --rm tts "${DOCKER_ARGS[@]}"
 
-# Check if chunks were created
-CHUNK_COUNT=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav 2>/dev/null | wc -l)
+# Check if chunks were created (both .wav and .mp3)
+CHUNK_COUNT=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav "$CHUNKS_DIR"/chunk_*.mp3 2>/dev/null | wc -l)
 if [ "$CHUNK_COUNT" -eq 0 ]; then
     echo -e "${RED}Error: No audio chunks were generated${NC}"
     # Clean up copied input file
@@ -275,12 +293,19 @@ if [ "$CHUNK_COUNT" -eq 0 ]; then
     exit 1
 fi
 
+# Detect chunk format
+if ls "$CHUNKS_DIR"/chunk_*.mp3 >/dev/null 2>&1; then
+    CHUNK_EXT="mp3"
+else
+    CHUNK_EXT="wav"
+fi
+
 echo ""
-echo -e "${YELLOW}Merging $CHUNK_COUNT chunks with ffmpeg...${NC}"
+echo -e "${YELLOW}Merging $CHUNK_COUNT ${CHUNK_EXT} chunks with ffmpeg...${NC}"
 
 # Create file list for ffmpeg concat
 cd "$PROJECT_DIR/$CHUNKS_DIR"
-ls -1 chunk_*.wav | sort -V | while read f; do
+ls -1 chunk_*.${CHUNK_EXT} | sort -V | while read f; do
     echo "file '$f'"
 done > files.txt
 

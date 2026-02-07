@@ -11,3 +11,4 @@ transformers==4.46.3
 kokoro>=0.9.4
 soundfile
 chatterbox-tts
+edge-tts
