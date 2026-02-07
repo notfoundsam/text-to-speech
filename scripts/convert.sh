@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Convert PDF/EPUB to speech audio
-# Usage: ./scripts/convert.sh <input_file> [voice] [--lang <code>] [--clean] [--background]
+# Usage: ./scripts/convert.sh <input_file> [voice] [--lang <code>] [--engine <name>] [--clean] [--background]
 #
 set -e
 
@@ -21,6 +21,7 @@ cd "$PROJECT_DIR"
 CLEAN_START=false
 BACKGROUND=false
 LANG="ru"
+ENGINE="silero"
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
             LANG="$2"
             shift 2
             ;;
+        --engine)
+            ENGINE="$2"
+            shift 2
+            ;;
         *)
             POSITIONAL_ARGS+=("$1")
             shift
@@ -47,8 +52,8 @@ done
 INPUT_FILE="${POSITIONAL_ARGS[0]:-}"
 VOICE="${POSITIONAL_ARGS[1]:-}"
 
-# Set default voice based on language
-if [ -z "$VOICE" ]; then
+# Set default voice based on language (only for Silero)
+if [ -z "$VOICE" ] && [ "$ENGINE" = "silero" ]; then
     case $LANG in
         ru)
             VOICE="aidar"
@@ -66,18 +71,23 @@ fi
 if [ -z "$INPUT_FILE" ]; then
     echo -e "${RED}Error: No input file specified${NC}"
     echo ""
-    echo "Usage: $0 <input_file> [voice] [--lang <code>] [--clean] [--background]"
+    echo "Usage: $0 <input_file> [voice] [--lang <code>] [--engine <name>] [--clean] [--background]"
     echo ""
     echo "Arguments:"
     echo "  input_file   Path to PDF or EPUB file"
-    echo "  voice        Voice name (default: aidar for ru, en_0 for en)"
+    echo "  voice        Voice name (Silero only, default: aidar for ru, en_0 for en)"
     echo ""
     echo "Options:"
-    echo "  --lang       Language: ru (default), en"
+    echo "  --lang       Language: ru (default), en, and more"
+    echo "  --engine     TTS engine: silero (default, fast) or xtts (high quality)"
     echo "  --clean      Start fresh, removing existing chunks"
     echo "  --background Run in background, logs saved to data/logs/"
     echo ""
-    echo "Voices:"
+    echo "Engines:"
+    echo "  silero       Fast, good Russian, basic English"
+    echo "  xtts         Slower, excellent quality for all languages"
+    echo ""
+    echo "Silero voices:"
     echo "  Russian (ru): aidar, baya, kseniya, xenia, eugene"
     echo "  English (en): en_0, en_1, en_2, en_3, en_4"
     echo ""
@@ -85,8 +95,8 @@ if [ -z "$INPUT_FILE" ]; then
     echo ""
     echo "Example:"
     echo "  $0 /path/to/books/mybook.epub"
-    echo "  $0 /path/to/books/mybook.pdf aidar"
-    echo "  $0 /path/to/books/english_book.epub --lang en"
+    echo "  $0 /path/to/books/mybook.epub --engine xtts"
+    echo "  $0 /path/to/books/english_book.epub --lang en --engine xtts"
     echo "  $0 /path/to/books/mybook.epub --background"
     exit 1
 fi
@@ -114,7 +124,11 @@ if [ "$BACKGROUND" = true ]; then
     LOG_FILE="$PROJECT_DIR/data/logs/${FILENAME}_${TIMESTAMP}.log"
 
     # Build args without --background to avoid infinite loop
-    ARGS=("$FULL_INPUT_PATH" "$VOICE" "--lang" "$LANG")
+    ARGS=("$FULL_INPUT_PATH")
+    if [ -n "$VOICE" ]; then
+        ARGS+=("$VOICE")
+    fi
+    ARGS+=("--lang" "$LANG" "--engine" "$ENGINE")
     if [ "$CLEAN_START" = true ]; then
         ARGS+=("--clean")
     fi
@@ -126,6 +140,7 @@ if [ "$BACKGROUND" = true ]; then
     echo "Started background conversion (PID: $PID)"
     echo "  Input:    $FULL_INPUT_PATH"
     echo "  Language: $LANG"
+    echo "  Engine:   $ENGINE"
     echo "  Log:      $LOG_FILE"
     echo ""
     echo "Monitor progress:"
@@ -159,7 +174,10 @@ echo -e "${GREEN}Starting conversion...${NC}"
 echo "  Input:    $FULL_INPUT_PATH"
 echo "  Output:   $INPUT_DIR/$OUTPUT_BASENAME"
 echo "  Language: $LANG"
-echo "  Voice:    $VOICE"
+echo "  Engine:   $ENGINE"
+if [ "$ENGINE" = "silero" ] && [ -n "$VOICE" ]; then
+    echo "  Voice:    $VOICE"
+fi
 echo "  Time:     $(date)"
 
 # Copy input file to working directory
@@ -179,14 +197,26 @@ else
 fi
 echo ""
 
+# Build docker command
+DOCKER_ARGS=(
+    "/data/input/$BASENAME"
+    "--chunks-dir" "/data/chunks/$BOOK_HASH"
+    "--lang" "$LANG"
+    "--engine" "$ENGINE"
+    "--resume"
+)
+
+# Add voice for Silero
+if [ "$ENGINE" = "silero" ] && [ -n "$VOICE" ]; then
+    DOCKER_ARGS+=("--voice" "$VOICE")
+fi
+
 # Run TTS in Docker container
 echo -e "${YELLOW}Running TTS synthesis in Docker...${NC}"
-docker compose run --rm tts \
-    "/data/input/$BASENAME" \
-    --chunks-dir "/data/chunks/$BOOK_HASH" \
-    --lang "$LANG" \
-    --voice "$VOICE" \
-    --resume
+if [ "$ENGINE" = "xtts" ]; then
+    echo -e "${YELLOW}Note: XTTS is slower but produces higher quality audio${NC}"
+fi
+docker compose run --rm tts "${DOCKER_ARGS[@]}"
 
 # Check if chunks were created
 CHUNK_COUNT=$(ls -1 "$CHUNKS_DIR"/chunk_*.wav 2>/dev/null | wc -l)
