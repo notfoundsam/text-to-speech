@@ -1,6 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.0.0
 torchaudio>=2.0.0
+omegaconf>=2.3.0
 pymupdf>=1.23.0
 ebooklib>=0.18
 beautifulsoup4>=4.12.0
