@@ -17,7 +17,7 @@ from .synthesize import (
 
 # Maximum chunk size per engine/language
 MAX_CHUNK_CHARS = {
-    "silero": {"ru": 1000, "en": 250},
+    "silero": {"ru": 500, "en": 250},
     "xtts": {"default": 400},
     "piper": {"default": 500},
     "kokoro": {"default": 400},
