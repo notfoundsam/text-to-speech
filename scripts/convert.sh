@@ -71,13 +71,13 @@ if [ -z "$VOICE" ]; then
             ;;
         kokoro)
             case $LANG in
-                en) VOICE="af_heart" ;;
+                en) VOICE="am_adam" ;;
                 en_gb) VOICE="bf_alice" ;;
                 es) VOICE="ef_dora" ;;
                 fr) VOICE="ff_siwis" ;;
                 ja) VOICE="jf_alpha" ;;
                 zh) VOICE="zf_xiaobei" ;;
-                *) VOICE="af_heart" ;;
+                *) VOICE="am_adam" ;;
             esac
             ;;
         chatterbox)

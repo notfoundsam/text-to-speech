@@ -92,7 +92,7 @@ VOICES = {
 }
 
 DEFAULT_VOICES = {
-    "en": "af_heart",
+    "en": "am_adam",
     "en_gb": "bf_alice",
     "es": "ef_dora",
     "fr": "ff_siwis",
