@@ -3,6 +3,16 @@
 from pathlib import Path
 
 import torch
+
+# Chatterbox multilingual model weights are saved with CUDA tensors,
+# which fails on CPU-only machines. Patch torch.load to force CPU mapping.
+_original_torch_load = torch.load
+def _patched_torch_load(*args, **kwargs):
+    kwargs.setdefault("map_location", "cpu")
+    kwargs.setdefault("weights_only", False)
+    return _original_torch_load(*args, **kwargs)
+torch.load = _patched_torch_load
+
 import torchaudio
 
 # Chatterbox supported languages
