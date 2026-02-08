@@ -22,15 +22,12 @@ def extract_from_pdf(path: str | Path) -> str:
     if not path.exists():
         raise FileNotFoundError(f"PDF file not found: {path}")
 
-    doc = fitz.open(path)
-    pages = []
-
-    for page in doc:
-        text = page.get_text()
-        if text.strip():
-            pages.append(text)
-
-    doc.close()
+    with fitz.open(path) as doc:
+        pages = []
+        for page in doc:
+            text = page.get_text()
+            if text.strip():
+                pages.append(text)
 
     if not pages:
         raise ValueError(f"No text extracted from PDF: {path}. It may be a scanned document.")
@@ -162,7 +159,6 @@ def extract_text(path: str | Path, filter_meta: bool = False) -> str:
     elif suffix == ".fb2":
         return extract_from_fb2(path, filter_meta=filter_meta)
     elif suffix == ".txt":
-        path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Text file not found: {path}")
         text = path.read_text(encoding="utf-8")

@@ -83,19 +83,26 @@ class EdgeTTS:
         audio_files = []
         total = len(chunks)
         skipped = 0
+        chunk_idx = 0
 
         for i, chunk in enumerate(chunks):
             if not chunk.strip():
                 continue
 
-            output_path = output_dir / f"chunk_{i:04d}.mp3"
+            output_path = output_dir / f"chunk_{chunk_idx:04d}.mp3"
+            chunk_idx += 1
 
-            if resume and output_path.exists() and output_path.stat().st_size > 0:
-                audio_files.append(output_path)
-                skipped += 1
-                if progress_callback:
-                    progress_callback(i + 1, total)
-                continue
+            # Skip if file exists and resume is enabled
+            if resume:
+                try:
+                    if output_path.exists() and output_path.stat().st_size > 0:
+                        audio_files.append(output_path)
+                        skipped += 1
+                        if progress_callback:
+                            progress_callback(i + 1, total)
+                        continue
+                except OSError:
+                    pass  # File disappeared between checks, re-synthesize
 
             self.synthesize(chunk, output_path)
             audio_files.append(output_path)

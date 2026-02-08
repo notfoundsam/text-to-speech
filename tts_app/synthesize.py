@@ -59,12 +59,15 @@ class SileroTTS:
     def model(self):
         """Lazy load the TTS model."""
         if self._model is None:
-            self._model, _ = torch.hub.load(
-                repo_or_dir="snakers4/silero-models",
-                model="silero_tts",
-                language=self.language,
-                speaker=MODEL_SPEAKERS[self.language],
-            )
+            try:
+                self._model, _ = torch.hub.load(
+                    repo_or_dir="snakers4/silero-models",
+                    model="silero_tts",
+                    language=self.language,
+                    speaker=MODEL_SPEAKERS[self.language],
+                )
+            except Exception as e:
+                raise RuntimeError(f"Failed to load Silero model for '{self.language}': {e}") from e
         return self._model
 
     def synthesize(
@@ -131,20 +134,26 @@ class SileroTTS:
         wav_files = []
         total = len(chunks)
         skipped = 0
+        chunk_idx = 0
 
         for i, chunk in enumerate(chunks):
             if not chunk.strip():
                 continue
 
-            output_path = output_dir / f"chunk_{i:04d}.wav"
+            output_path = output_dir / f"chunk_{chunk_idx:04d}.wav"
+            chunk_idx += 1
 
             # Skip if file exists and resume is enabled
-            if resume and output_path.exists() and output_path.stat().st_size > 0:
-                wav_files.append(output_path)
-                skipped += 1
-                if progress_callback:
-                    progress_callback(i + 1, total)
-                continue
+            if resume:
+                try:
+                    if output_path.exists() and output_path.stat().st_size > 0:
+                        wav_files.append(output_path)
+                        skipped += 1
+                        if progress_callback:
+                            progress_callback(i + 1, total)
+                        continue
+                except OSError:
+                    pass  # File disappeared between checks, re-synthesize
 
             self.synthesize(chunk, output_path, voice)
             wav_files.append(output_path)

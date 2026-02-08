@@ -1,12 +1,12 @@
 # App dependencies
 omegaconf>=2.3.0
-pymupdf>=1.23.0
-ebooklib>=0.18
-beautifulsoup4>=4.12.0
+pymupdf>=1.25.0
+ebooklib>=0.20
+beautifulsoup4>=4.14.0
 lxml>=4.9.0
 scipy>=1.11.0
 piper-tts==1.2.0
-TTS>=0.22.0
+coqui-tts>=0.25.0
 transformers==4.46.3
 kokoro>=0.9.4
 soundfile
