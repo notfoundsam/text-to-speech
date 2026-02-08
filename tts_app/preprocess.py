@@ -56,6 +56,70 @@ def remove_page_artifacts(text: str) -> str:
     return "\n".join(cleaned)
 
 
+def remove_boilerplate(text: str) -> str:
+    """Remove common publishing boilerplate from text.
+
+    Strips ISBN lines, copyright notices, publisher info, standalone URLs,
+    TOC-style dotted lines, and blocks of short lines that look like a TOC.
+
+    Args:
+        text: Text with potential boilerplate.
+
+    Returns:
+        Cleaned text.
+    """
+    lines = text.split("\n")
+    cleaned = []
+
+    for line in lines:
+        stripped = line.strip()
+
+        # ISBN lines
+        if re.match(r"^ISBN[\s:\-]", stripped, re.IGNORECASE):
+            continue
+
+        # Copyright lines: © 2024 ... or Copyright (c) ...
+        if re.match(r"^(©|\(c\)|Copyright)\s", stripped, re.IGNORECASE):
+            continue
+
+        # Publishing boilerplate phrases (whole-line match)
+        if re.match(
+            r"^(All rights reserved|Published by|Printed in|First (edition|published)|"
+            r"Все права защищены|Издательство|Издано|Отпечатано)",
+            stripped,
+            re.IGNORECASE,
+        ):
+            continue
+
+        # Standalone URL lines
+        if re.match(r"^(https?://|www\.)\S+$", stripped, re.IGNORECASE):
+            continue
+
+        # TOC-style dotted/dashed lines: "Chapter 1 ........... 15"
+        if re.match(r"^.{1,60}[.\-·…]{4,}\s*\d+\s*$", stripped):
+            continue
+
+        cleaned.append(line)
+
+    # Remove blocks of consecutive short lines ending with a number (TOC-like)
+    result = []
+    buf = []
+    for line in cleaned:
+        stripped = line.strip()
+        if len(stripped) < 60 and re.search(r"\d+\s*$", stripped) and stripped:
+            buf.append(line)
+        else:
+            if len(buf) < 5:
+                result.extend(buf)
+            # else: drop the block — looks like a TOC
+            buf = []
+            result.append(line)
+    if len(buf) < 5:
+        result.extend(buf)
+
+    return "\n".join(result)
+
+
 def split_into_sentences(text: str) -> list[str]:
     """Split text into sentences, respecting Russian punctuation.
 
@@ -194,18 +258,21 @@ def _split_long_sentence(sentence: str, max_chars: int) -> list[str]:
     return chunks
 
 
-def preprocess(text: str, max_chunk_chars: int = 1000) -> list[str]:
+def preprocess(text: str, max_chunk_chars: int = 1000, filter_meta: bool = False) -> list[str]:
     """Full preprocessing pipeline: clean and chunk text.
 
     Args:
         text: Raw extracted text.
         max_chunk_chars: Maximum characters per chunk.
+        filter_meta: If True, remove publishing boilerplate and TOC artifacts.
 
     Returns:
         List of cleaned text chunks ready for TTS.
     """
     text = normalize_whitespace(text)
     text = remove_page_artifacts(text)
+    if filter_meta:
+        text = remove_boilerplate(text)
 
     # Final cleanup of excessive whitespace that might remain
     text = re.sub(r"\n{2,}", "\n\n", text)

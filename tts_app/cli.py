@@ -110,6 +110,12 @@ def main():
         help="Resume from existing chunks (skip already generated files)",
     )
 
+    parser.add_argument(
+        "--filter-meta",
+        action="store_true",
+        help="Filter out publishing boilerplate (ISBN, copyright, TOC, etc.)",
+    )
+
     args = parser.parse_args()
 
     # Handle --list-voices
@@ -175,7 +181,7 @@ def main():
         print(f"Extracting text from: {input_path.name}", file=sys.stderr)
 
     try:
-        text = extract_text(input_path)
+        text = extract_text(input_path, filter_meta=args.filter_meta)
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -195,7 +201,7 @@ def main():
     if not args.quiet:
         print("Preprocessing text...", file=sys.stderr)
 
-    chunks = preprocess(text, max_chunk_chars=max_chars)
+    chunks = preprocess(text, max_chunk_chars=max_chars, filter_meta=args.filter_meta)
 
     if not chunks:
         print("Error: No text chunks to process", file=sys.stderr)

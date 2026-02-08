@@ -20,6 +20,7 @@ cd "$PROJECT_DIR"
 # Parse arguments
 CLEAN_START=false
 BACKGROUND=false
+FILTER_META=false
 LANG="ru"
 ENGINE="silero"
 POSITIONAL_ARGS=()
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --background)
             BACKGROUND=true
+            shift
+            ;;
+        --filter-meta)
+            FILTER_META=true
             shift
             ;;
         --lang)
@@ -98,17 +103,18 @@ fi
 if [ -z "$INPUT_FILE" ]; then
     echo -e "${RED}Error: No input file specified${NC}"
     echo ""
-    echo "Usage: $0 <input_file> [voice] [--lang <code>] [--engine <name>] [--clean] [--background]"
+    echo "Usage: $0 <input_file> [voice] [--lang <code>] [--engine <name>] [--clean] [--background] [--filter-meta]"
     echo ""
     echo "Arguments:"
     echo "  input_file   Path to PDF or EPUB file"
     echo "  voice        Voice name (optional, see below)"
     echo ""
     echo "Options:"
-    echo "  --lang       Language: ru (default), en"
-    echo "  --engine     TTS engine: silero (default), piper, kokoro, chatterbox, edge, xtts"
-    echo "  --clean      Start fresh, removing existing chunks"
-    echo "  --background Run in background, logs saved to data/logs/"
+    echo "  --lang         Language: ru (default), en"
+    echo "  --engine       TTS engine: silero (default), piper, kokoro, chatterbox, edge, xtts"
+    echo "  --clean        Start fresh, removing existing chunks"
+    echo "  --background   Run in background, logs saved to data/logs/"
+    echo "  --filter-meta  Filter out publishing boilerplate (ISBN, copyright, TOC, etc.)"
     echo ""
     echo "Engines:"
     echo "  silero       Fast, good Russian, basic English"
@@ -183,6 +189,9 @@ if [ "$BACKGROUND" = true ]; then
     ARGS+=("--lang" "$LANG" "--engine" "$ENGINE")
     if [ "$CLEAN_START" = true ]; then
         ARGS+=("--clean")
+    fi
+    if [ "$FILTER_META" = true ]; then
+        ARGS+=("--filter-meta")
     fi
 
     # Run in background with nohup
@@ -261,6 +270,11 @@ DOCKER_ARGS=(
 # Add voice if set
 if [ -n "$VOICE" ]; then
     DOCKER_ARGS+=("--voice" "$VOICE")
+fi
+
+# Add filter-meta if set
+if [ "$FILTER_META" = true ]; then
+    DOCKER_ARGS+=("--filter-meta")
 fi
 
 # Run TTS in Docker container

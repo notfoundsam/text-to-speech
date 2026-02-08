@@ -38,11 +38,12 @@ def extract_from_pdf(path: str | Path) -> str:
     return "\n".join(pages)
 
 
-def extract_from_epub(path: str | Path) -> str:
+def extract_from_epub(path: str | Path, filter_meta: bool = False) -> str:
     """Extract text from an EPUB file.
 
     Args:
         path: Path to the EPUB file.
+        filter_meta: If True, skip navigation/cover pages (non-chapter items).
 
     Returns:
         Extracted text content.
@@ -63,6 +64,8 @@ def extract_from_epub(path: str | Path) -> str:
 
     for item in book.get_items():
         if item.get_type() == ITEM_DOCUMENT:
+            if filter_meta and not item.is_chapter():
+                continue
             soup = BeautifulSoup(item.get_content(), "html.parser")
             text = soup.get_text()
             if text.strip():
@@ -74,11 +77,27 @@ def extract_from_epub(path: str | Path) -> str:
     return "\n".join(parts)
 
 
-def extract_from_fb2(path: str | Path) -> str:
+_TOC_KEYWORDS = {
+    "содержание", "оглавление",
+    "contents", "table of contents",
+}
+
+
+def _is_toc_section(section) -> bool:
+    """Check if an FB2 section looks like a table of contents."""
+    title = section.find("title")
+    if not title:
+        return False
+    title_text = title.get_text(strip=True).lower()
+    return title_text in _TOC_KEYWORDS
+
+
+def extract_from_fb2(path: str | Path, filter_meta: bool = False) -> str:
     """Extract text from an FB2 file.
 
     Args:
         path: Path to the FB2 file.
+        filter_meta: If True, skip TOC-like sections.
 
     Returns:
         Extracted text content.
@@ -102,6 +121,8 @@ def extract_from_fb2(path: str | Path) -> str:
 
     parts = []
     for section in body.find_all("section"):
+        if filter_meta and _is_toc_section(section):
+            continue
         text = section.get_text(separator="\n")
         if text.strip():
             parts.append(text)
@@ -118,11 +139,12 @@ def extract_from_fb2(path: str | Path) -> str:
     return "\n".join(parts)
 
 
-def extract_text(path: str | Path) -> str:
+def extract_text(path: str | Path, filter_meta: bool = False) -> str:
     """Extract text from a PDF or EPUB file based on extension.
 
     Args:
         path: Path to the input file.
+        filter_meta: If True, apply structural filtering to skip boilerplate.
 
     Returns:
         Extracted text content.
@@ -136,9 +158,9 @@ def extract_text(path: str | Path) -> str:
     if suffix == ".pdf":
         return extract_from_pdf(path)
     elif suffix == ".epub":
-        return extract_from_epub(path)
+        return extract_from_epub(path, filter_meta=filter_meta)
     elif suffix == ".fb2":
-        return extract_from_fb2(path)
+        return extract_from_fb2(path, filter_meta=filter_meta)
     elif suffix == ".txt":
         path = Path(path)
         if not path.exists():
