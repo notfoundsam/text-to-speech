@@ -1,5 +1,0 @@
-# Base dependencies (rarely change) - cached separately
---extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.0.0,<2.7.0
-torchaudio>=2.0.0,<2.7.0
-numpy>=1.24.0
