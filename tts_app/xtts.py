@@ -16,7 +16,7 @@ def _patched_torch_load(*args, **kwargs):
     return _original_torch_load(*args, **kwargs)
 torch.load = _patched_torch_load
 
-from TTS.api import TTS
+from TTS.api import TTS  # noqa: E402
 
 # XTTS supported languages
 LANGUAGES = ["en", "ru", "es", "fr", "de", "it", "pt", "pl", "tr", "nl", "cs", "ar", "zh", "ja", "ko", "hu"]
@@ -66,7 +66,6 @@ class XttsTTS:
 
         # Generate a reference audio using a simple TTS model
         # This creates a short reference that XTTS will use for voice characteristics
-        from TTS.utils.synthesizer import Synthesizer
         import scipy.io.wavfile as wavfile
         import numpy as np
 

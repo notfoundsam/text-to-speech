@@ -13,7 +13,7 @@ def _patched_torch_load(*args, **kwargs):
     return _original_torch_load(*args, **kwargs)
 torch.load = _patched_torch_load
 
-import torchaudio
+import torchaudio  # noqa: E402
 
 # Chatterbox supported languages
 LANGUAGES = [
