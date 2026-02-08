@@ -49,8 +49,8 @@ def extract_from_epub(path: str | Path, filter_meta: bool = False) -> str:
         FileNotFoundError: If the file doesn't exist.
         ValueError: If no text could be extracted.
     """
-    from ebooklib import epub, ITEM_DOCUMENT
     from bs4 import BeautifulSoup
+    from ebooklib import ITEM_DOCUMENT, epub
 
     path = Path(path)
     if not path.exists():
@@ -75,8 +75,10 @@ def extract_from_epub(path: str | Path, filter_meta: bool = False) -> str:
 
 
 _TOC_KEYWORDS = {
-    "содержание", "оглавление",
-    "contents", "table of contents",
+    "содержание",
+    "оглавление",
+    "contents",
+    "table of contents",
 }
 
 
@@ -109,7 +111,7 @@ def extract_from_fb2(path: str | Path, filter_meta: bool = False) -> str:
     if not path.exists():
         raise FileNotFoundError(f"FB2 file not found: {path}")
 
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         soup = BeautifulSoup(f, "lxml-xml")
 
     body = soup.find("body")
@@ -154,16 +156,15 @@ def extract_text(path: str | Path, filter_meta: bool = False) -> str:
 
     if suffix == ".pdf":
         return extract_from_pdf(path)
-    elif suffix == ".epub":
+    if suffix == ".epub":
         return extract_from_epub(path, filter_meta=filter_meta)
-    elif suffix == ".fb2":
+    if suffix == ".fb2":
         return extract_from_fb2(path, filter_meta=filter_meta)
-    elif suffix == ".txt":
+    if suffix == ".txt":
         if not path.exists():
             raise FileNotFoundError(f"Text file not found: {path}")
         text = path.read_text(encoding="utf-8")
         if not text.strip():
             raise ValueError(f"No text in file: {path}")
         return text
-    else:
-        raise ValueError(f"Unsupported file format: {suffix}. Use PDF, EPUB, FB2, or TXT.")
+    raise ValueError(f"Unsupported file format: {suffix}. Use PDF, EPUB, FB2, or TXT.")

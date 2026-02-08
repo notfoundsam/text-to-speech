@@ -43,7 +43,7 @@ DEFAULT_VOICES = {
 class EdgeTTS:
     """Wrapper for Edge-TTS (Microsoft neural TTS)."""
 
-    def __init__(self, language: str = "ru", voice: str = None):
+    def __init__(self, language: str = "ru", voice: str | None = None):
         if language not in VOICES:
             raise ValueError(f"Unsupported language: {language}. Available: {list(VOICES.keys())}")
 
@@ -51,7 +51,9 @@ class EdgeTTS:
         self.voice_name = voice or DEFAULT_VOICES[language]
 
         if self.voice_name not in VOICES[language]:
-            raise ValueError(f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}")
+            raise ValueError(
+                f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}"
+            )
 
     def synthesize(self, text: str, output_path: str | Path) -> Path:
         output_path = Path(output_path)
@@ -61,14 +63,19 @@ class EdgeTTS:
             try:
                 communicate = edge_tts.Communicate(text, self.voice_name)
                 communicate.save_sync(str(output_path))
-                return output_path
             except Exception as e:
                 if "503" in str(e) and attempt < MAX_RETRIES - 1:
-                    delay = RETRY_BASE_DELAY * (2 ** attempt)
-                    print(f"\n  Rate limited (503), retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})...", file=sys.stderr)
+                    delay = RETRY_BASE_DELAY * (2**attempt)
+                    print(
+                        f"\n  Rate limited (503), retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})...",
+                        file=sys.stderr,
+                    )
                     time.sleep(delay)
                 else:
                     raise
+            else:
+                return output_path
+        return output_path
 
     def synthesize_chunks(
         self,
@@ -113,7 +120,7 @@ class EdgeTTS:
         return audio_files, skipped
 
 
-def list_voices(language: str = None) -> dict:
+def list_voices(language: str | None = None) -> dict:
     if language is None:
         return {lang: voices.copy() for lang, voices in VOICES.items()}
     if language not in VOICES:

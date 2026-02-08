@@ -7,19 +7,43 @@ import torch
 # Chatterbox multilingual model weights are saved with CUDA tensors,
 # which fails on CPU-only machines. Patch torch.load to force CPU mapping.
 _original_torch_load = torch.load
+
+
 def _patched_torch_load(*args, **kwargs):
     kwargs.setdefault("map_location", "cpu")
     kwargs.setdefault("weights_only", False)
     return _original_torch_load(*args, **kwargs)
+
+
 torch.load = _patched_torch_load
 
 import torchaudio  # noqa: E402
 
 # Chatterbox supported languages
 LANGUAGES = [
-    "en", "ru", "es", "fr", "de", "it", "pt", "pl", "tr", "nl",
-    "cs", "ar", "zh", "ja", "ko", "hu", "sv", "da", "fi", "no",
-    "el", "ro", "uk",
+    "en",
+    "ru",
+    "es",
+    "fr",
+    "de",
+    "it",
+    "pt",
+    "pl",
+    "tr",
+    "nl",
+    "cs",
+    "ar",
+    "zh",
+    "ja",
+    "ko",
+    "hu",
+    "sv",
+    "da",
+    "fi",
+    "no",
+    "el",
+    "ro",
+    "uk",
 ]
 
 # English uses the Turbo model, all others use Multilingual
@@ -31,7 +55,7 @@ DEFAULT_SAMPLE_RATE = 24000
 class ChatterboxTTS:
     """Wrapper for Chatterbox TTS (Turbo + Multilingual)."""
 
-    def __init__(self, language: str = "en", voice: str = None):
+    def __init__(self, language: str = "en", voice: str | None = None):
         """Initialize Chatterbox TTS.
 
         Args:
@@ -97,16 +121,15 @@ class ChatterboxTTS:
                 wav = self.model.generate(text, audio_prompt_path=speaker_wav)
             else:
                 wav = self.model.generate(text)
+        # Multilingual model
+        elif speaker_wav:
+            wav = self.model.generate(
+                text,
+                audio_prompt_path=speaker_wav,
+                language_id=self.language,
+            )
         else:
-            # Multilingual model
-            if speaker_wav:
-                wav = self.model.generate(
-                    text,
-                    audio_prompt_path=speaker_wav,
-                    language_id=self.language,
-                )
-            else:
-                wav = self.model.generate(text, language_id=self.language)
+            wav = self.model.generate(text, language_id=self.language)
 
         torchaudio.save(str(output_path), wav, self.model.sr)
         return output_path

@@ -109,7 +109,7 @@ DEFAULT_SAMPLE_RATE = 24000
 class KokoroTTS:
     """Wrapper for Kokoro TTS."""
 
-    def __init__(self, language: str = "en", voice: str = None):
+    def __init__(self, language: str = "en", voice: str | None = None):
         """Initialize Kokoro TTS.
 
         Args:
@@ -123,7 +123,9 @@ class KokoroTTS:
         self.voice_name = voice or DEFAULT_VOICES[language]
 
         if self.voice_name not in VOICES[language]:
-            raise ValueError(f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}")
+            raise ValueError(
+                f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}"
+            )
 
         self.sample_rate = DEFAULT_SAMPLE_RATE
         self._pipeline = None
@@ -220,7 +222,7 @@ class KokoroTTS:
         return wav_files, skipped
 
 
-def list_voices(language: str = None) -> dict:
+def list_voices(language: str | None = None) -> dict:
     """Get available voices.
 
     Args:

@@ -94,7 +94,9 @@ class SileroTTS:
 
         available_voices = VOICES[self.language]
         if voice not in available_voices:
-            raise ValueError(f"Unknown voice: {voice}. Available for {self.language}: {list(available_voices.keys())}")
+            raise ValueError(
+                f"Unknown voice: {voice}. Available for {self.language}: {list(available_voices.keys())}"
+            )
 
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

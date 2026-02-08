@@ -48,6 +48,12 @@ ignore = [
     "E501",     # line too long (handled by formatter)
     "S101",     # assert used
     "PLR0913",  # too many arguments
+    "PLR0911",  # too many return statements (CLI dispatch)
+    "PLR0912",  # too many branches (CLI dispatch)
+    "PLR0915",  # too many statements (CLI dispatch)
+    "PLR2004",  # magic values in comparisons
+    "RUF001",   # ambiguous unicode (Cyrillic in regex is intentional)
+    "RET504",   # unnecessary assignment before return
     "TRY003",   # long exception messages
     "COM812",   # missing trailing comma (conflicts with formatter)
 ]

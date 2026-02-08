@@ -68,9 +68,9 @@ def _download_voice(voice_name: str) -> tuple[Path, Path]:
             print(f"\r  Downloading: {percent}%", end="", flush=True)
 
     try:
-        urllib.request.urlretrieve(model_url, model_path, show_progress)
+        urllib.request.urlretrieve(model_url, model_path, show_progress)  # noqa: S310
         print()  # newline after progress
-        urllib.request.urlretrieve(config_url, config_path)
+        urllib.request.urlretrieve(config_url, config_path)  # noqa: S310
     except Exception as e:
         # Clean up partial downloads
         model_path.unlink(missing_ok=True)
@@ -84,7 +84,7 @@ def _download_voice(voice_name: str) -> tuple[Path, Path]:
 class PiperTTS:
     """Wrapper for Piper TTS."""
 
-    def __init__(self, language: str = "en", voice: str = None):
+    def __init__(self, language: str = "en", voice: str | None = None):
         """Initialize Piper TTS.
 
         Args:
@@ -98,7 +98,9 @@ class PiperTTS:
         self.voice_name = voice or DEFAULT_VOICES[language]
 
         if self.voice_name not in VOICES[language]:
-            raise ValueError(f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}")
+            raise ValueError(
+                f"Unknown voice: {self.voice_name}. Available: {list(VOICES[language].keys())}"
+            )
 
         # Download model if needed and load voice
         model_path, config_path = _download_voice(self.voice_name)
@@ -182,7 +184,7 @@ class PiperTTS:
         return wav_files, skipped
 
 
-def list_voices(language: str = None) -> dict:
+def list_voices(language: str | None = None) -> dict:
     """Get available voices.
 
     Args:

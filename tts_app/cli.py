@@ -7,12 +7,18 @@ from pathlib import Path
 from .extract import extract_text
 from .preprocess import preprocess
 from .synthesize import (
-    SileroTTS,
-    list_voices as silero_list_voices,
-    list_languages as silero_list_languages,
     DEFAULT_LANGUAGE,
-    DEFAULT_VOICES as SILERO_DEFAULT_VOICES,
     DEFAULT_SAMPLE_RATE,
+    SileroTTS,
+)
+from .synthesize import (
+    DEFAULT_VOICES as SILERO_DEFAULT_VOICES,
+)
+from .synthesize import (
+    list_languages as silero_list_languages,
+)
+from .synthesize import (
+    list_voices as silero_list_voices,
 )
 
 # Maximum chunk size per engine/language
@@ -130,7 +136,9 @@ def main():
                 print(f"  {name:10} - {description}{marker}")
 
         print("\n=== Piper voices ===")
-        from .piper_tts import list_voices as piper_list_voices, DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+        from .piper_tts import DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+        from .piper_tts import list_voices as piper_list_voices
+
         all_piper = piper_list_voices()
         for lang, voices in all_piper.items():
             default = PIPER_DEFAULT_VOICES[lang]
@@ -140,7 +148,9 @@ def main():
                 print(f"  {name} - {description}{marker}")
 
         print("\n=== Kokoro voices ===")
-        from .kokoro_tts import list_voices as kokoro_list_voices, DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+        from .kokoro_tts import DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+        from .kokoro_tts import list_voices as kokoro_list_voices
+
         all_kokoro = kokoro_list_voices()
         for lang, voices in all_kokoro.items():
             default = KOKORO_DEFAULT_VOICES[lang]
@@ -152,10 +162,13 @@ def main():
         print("\n=== Chatterbox ===")
         print("Voice cloning engine (--voice <path_to_reference.wav>)")
         from .chatterbox_tts import list_languages as chatterbox_list_languages
+
         print(f"Languages: {', '.join(chatterbox_list_languages())}")
 
         print("\n=== Edge-TTS voices ===")
-        from .edge_tts_wrapper import list_voices as edge_list_voices, DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+        from .edge_tts_wrapper import DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+        from .edge_tts_wrapper import list_voices as edge_list_voices
+
         all_edge = edge_list_voices()
         for lang, voices in all_edge.items():
             default = EDGE_DEFAULT_VOICES[lang]
@@ -193,7 +206,9 @@ def main():
     if args.max_chunk_chars:
         max_chars = args.max_chunk_chars
     elif args.engine in MAX_CHUNK_CHARS:
-        max_chars = MAX_CHUNK_CHARS[args.engine].get(args.lang, MAX_CHUNK_CHARS[args.engine].get("default", 500))
+        max_chars = MAX_CHUNK_CHARS[args.engine].get(
+            args.lang, MAX_CHUNK_CHARS[args.engine].get("default", 500)
+        )
     else:
         max_chars = 500
 
@@ -214,7 +229,10 @@ def main():
 
     # Initialize TTS engine
     if args.engine == "piper":
-        from .piper_tts import PiperTTS, list_voices as piper_list_voices, list_languages as piper_list_languages, DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+        from .piper_tts import DEFAULT_VOICES as PIPER_DEFAULT_VOICES
+        from .piper_tts import PiperTTS
+        from .piper_tts import list_languages as piper_list_languages
+        from .piper_tts import list_voices as piper_list_voices
 
         # Validate language
         piper_languages = piper_list_languages()
@@ -242,7 +260,8 @@ def main():
             return 1
 
     elif args.engine == "xtts":
-        from .xtts import XttsTTS, list_languages as xtts_list_languages
+        from .xtts import XttsTTS
+        from .xtts import list_languages as xtts_list_languages
 
         # Validate language
         xtts_languages = xtts_list_languages()
@@ -268,7 +287,9 @@ def main():
             return 1
 
     elif args.engine == "kokoro":
-        from .kokoro_tts import KokoroTTS, list_languages as kokoro_list_languages, DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+        from .kokoro_tts import DEFAULT_VOICES as KOKORO_DEFAULT_VOICES
+        from .kokoro_tts import KokoroTTS
+        from .kokoro_tts import list_languages as kokoro_list_languages
 
         # Validate language
         kokoro_languages = kokoro_list_languages()
@@ -296,7 +317,8 @@ def main():
             return 1
 
     elif args.engine == "chatterbox":
-        from .chatterbox_tts import ChatterboxTTS, list_languages as chatterbox_list_languages
+        from .chatterbox_tts import ChatterboxTTS
+        from .chatterbox_tts import list_languages as chatterbox_list_languages
 
         # Validate language
         chatterbox_languages = chatterbox_list_languages()
@@ -322,7 +344,9 @@ def main():
             return 1
 
     elif args.engine == "edge":
-        from .edge_tts_wrapper import EdgeTTS, list_languages as edge_list_languages, DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+        from .edge_tts_wrapper import DEFAULT_VOICES as EDGE_DEFAULT_VOICES
+        from .edge_tts_wrapper import EdgeTTS
+        from .edge_tts_wrapper import list_languages as edge_list_languages
 
         # Validate language
         edge_languages = edge_list_languages()
@@ -364,7 +388,9 @@ def main():
         # Validate voice
         available_voices = silero_list_voices(args.lang)
         if voice not in available_voices:
-            print(f"Error: Voice '{voice}' not available for language '{args.lang}'", file=sys.stderr)
+            print(
+                f"Error: Voice '{voice}' not available for language '{args.lang}'", file=sys.stderr
+            )
             print(f"Available voices: {', '.join(available_voices.keys())}", file=sys.stderr)
             return 1
 
@@ -386,7 +412,10 @@ def main():
 
     if not args.quiet:
         if skipped > 0:
-            print(f"Skipped {skipped} existing chunks, generated {len(wav_files) - skipped} new", file=sys.stderr)
+            print(
+                f"Skipped {skipped} existing chunks, generated {len(wav_files) - skipped} new",
+                file=sys.stderr,
+            )
         else:
             print(f"Generated {len(wav_files)} audio files in {chunks_dir}", file=sys.stderr)
 

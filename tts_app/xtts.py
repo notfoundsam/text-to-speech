@@ -11,15 +11,36 @@ import torch
 # Coqui TTS models require unpickling custom classes, which PyTorch 2.6+ blocks by default
 torch.serialization.add_safe_globals([])
 _original_torch_load = torch.load
+
+
 def _patched_torch_load(*args, **kwargs):
     kwargs.setdefault("weights_only", False)
     return _original_torch_load(*args, **kwargs)
+
+
 torch.load = _patched_torch_load
 
 from TTS.api import TTS  # noqa: E402
 
 # XTTS supported languages
-LANGUAGES = ["en", "ru", "es", "fr", "de", "it", "pt", "pl", "tr", "nl", "cs", "ar", "zh", "ja", "ko", "hu"]
+LANGUAGES = [
+    "en",
+    "ru",
+    "es",
+    "fr",
+    "de",
+    "it",
+    "pt",
+    "pl",
+    "tr",
+    "nl",
+    "cs",
+    "ar",
+    "zh",
+    "ja",
+    "ko",
+    "hu",
+]
 
 DEFAULT_SAMPLE_RATE = 24000  # XTTS outputs 24kHz
 
@@ -66,8 +87,8 @@ class XttsTTS:
 
         # Generate a reference audio using a simple TTS model
         # This creates a short reference that XTTS will use for voice characteristics
-        import scipy.io.wavfile as wavfile
         import numpy as np
+        from scipy.io import wavfile
 
         # Create a simple sine wave as fallback (will give robotic but working output)
         # The actual voice quality comes from XTTS's training, not this reference
@@ -81,7 +102,7 @@ class XttsTTS:
         audio += np.sin(2 * np.pi * frequency * 2 * t) * 0.2
         audio += np.sin(2 * np.pi * frequency * 3 * t) * 0.1
         # Add some amplitude modulation
-        audio *= (1 + 0.3 * np.sin(2 * np.pi * 3 * t))
+        audio *= 1 + 0.3 * np.sin(2 * np.pi * 3 * t)
         audio = (audio * 32767).astype(np.int16)
 
         wavfile.write(str(ref_file), sample_rate, audio)
