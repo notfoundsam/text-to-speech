@@ -17,12 +17,12 @@ build:
 
 ## lint: Run Ruff linter and format check
 lint:
-	$(COMPOSE) run --rm --no-deps $(SERVICE) sh -c \
+	$(COMPOSE) run --rm --no-deps --entrypoint sh $(SERVICE) -c \
 		"pip install -q --root-user-action=ignore ruff==$(RUFF_VERSION) && ruff check tts_app/ && ruff format --check tts_app/"
 
 ## fix: Auto-fix lint issues and format code
 fix:
-	$(COMPOSE) run --rm --no-deps $(SERVICE) sh -c \
+	$(COMPOSE) run --rm --no-deps --entrypoint sh $(SERVICE) -c \
 		"pip install -q --root-user-action=ignore ruff==$(RUFF_VERSION) && ruff check --fix tts_app/ && ruff format tts_app/"
 
 ## clean: Remove generated chunks and output files
