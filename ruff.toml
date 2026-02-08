@@ -1,0 +1,75 @@
+# Ruff configuration for Text-to-Speech project
+# https://docs.astral.sh/ruff/configuration/
+
+# Target Python version
+target-version = "py312"
+
+# Line length
+line-length = 100
+
+# Exclude common directories
+exclude = [
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "venv",
+    "models",
+    "data",
+]
+
+[lint]
+# Enable rules
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "W",      # pycodestyle warnings
+    "UP",     # pyupgrade (modern Python syntax)
+    "B",      # flake8-bugbear (common bugs)
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "RET",    # flake8-return
+    "RUF",    # Ruff-specific rules
+    "PTH",    # flake8-use-pathlib
+    "PERF",   # Perflint (performance anti-patterns)
+    "FURB",   # refurb (modern Python idioms)
+    "A",      # flake8-builtins (avoid shadowing builtins)
+    "COM",    # flake8-commas (trailing commas)
+    "Q",      # flake8-quotes (consistent quotes)
+    "ERA",    # eradicate (commented-out code)
+    "PL",     # Pylint rules
+    "N",      # pep8-naming conventions
+    "S",      # flake8-bandit (security issues)
+    "TRY",    # tryceratops (exception handling)
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",     # line too long (handled by formatter)
+    "S101",     # assert used
+    "PLR0913",  # too many arguments
+    "TRY003",   # long exception messages
+    "COM812",   # missing trailing comma (conflicts with formatter)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+
+[lint.isort]
+known-first-party = ["tts_app"]
+
+[lint.per-file-ignores]
+"scripts/*.py" = ["T20"]
+"tts_app/cli.py" = ["T20"]  # CLI uses print for output
+
+[lint.flake8-quotes]
+inline-quotes = "double"
+
+[lint.pylint]
+max-args = 8
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
