@@ -1,8 +1,13 @@
 """Edge-TTS synthesis module (Microsoft neural TTS, requires internet)."""
 
+import sys
+import time
 from pathlib import Path
 
 import edge_tts
+
+MAX_RETRIES = 5
+RETRY_BASE_DELAY = 5  # seconds
 
 # Available voices per language
 VOICES = {
@@ -52,9 +57,18 @@ class EdgeTTS:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        communicate = edge_tts.Communicate(text, self.voice_name)
-        communicate.save_sync(str(output_path))
-        return output_path
+        for attempt in range(MAX_RETRIES):
+            try:
+                communicate = edge_tts.Communicate(text, self.voice_name)
+                communicate.save_sync(str(output_path))
+                return output_path
+            except Exception as e:
+                if "503" in str(e) and attempt < MAX_RETRIES - 1:
+                    delay = RETRY_BASE_DELAY * (2 ** attempt)
+                    print(f"\n  Rate limited (503), retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})...", file=sys.stderr)
+                    time.sleep(delay)
+                else:
+                    raise
 
     def synthesize_chunks(
         self,
