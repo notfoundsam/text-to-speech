@@ -12,7 +12,7 @@ beautifulsoup4>=4.14.0
 lxml>=4.9.0
 scipy>=1.11.0
 piper-tts==1.2.0
-coqui-tts>=0.25.0
+TTS>=0.22.0
 transformers==4.46.3
 kokoro>=0.9.4
 soundfile
